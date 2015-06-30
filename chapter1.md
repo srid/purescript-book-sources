@@ -87,7 +87,7 @@ I will assume that you are familiar with the basics of JavaScript. Any prior fam
 
 No prior knowledge of functional programming is required, but it certainly won't hurt. New ideas will be accompanied by practical examples, so you should be able to form an intuition for the concepts from functional programming that we will use.
 
-Readers who are familiar with the Haskell programming language will recognise a lot of the ideas and syntax presented in this book, because PureScript is heavily influenced by Haskell. However, those readers should understand that there are a number of important differences between PureScript and Haskell. It is not necessarily always appropriate to try to apply ideas from one language in the other, although many of the concepts presented here will have some interpretation in Haskell.
+Readers who are familiar with the Haskell programming language will recognize a lot of the ideas and syntax presented in this book, because PureScript is heavily influenced by Haskell. However, those readers should understand that there are a number of important differences between PureScript and Haskell. It is not necessarily always appropriate to try to apply ideas from one language in the other, although many of the concepts presented here will have some interpretation in Haskell.
 
 ## How to Read This Book
 
@@ -121,6 +121,16 @@ Commands which should be typed at the `psci` interactive mode prompt will be pre
 Each chapter will contain exercises, labelled with their difficulty level. It is strongly recommended that you attempt the exercises in each chapter to fully understand the material.
 
 This book aims to provide an introduction to the PureScript language for beginners, but it is not the sort of book that provides a list of template solutions to problems. For beginners, this book should be a fun challenge, and you will get the most benefit if you read the material, attempt the exercises, and most importantly of all, try to write some code of your own. 
+
+## A Note on Compatibility
+
+This book has not yet been updated to be compatible with the latest version of the PureScript compiler.
+
+The PureScript compiler was massively updated, with many breaking changes, in the 0.7 release. This book and its examples are compatible with versions before 0.7, but **not** compatible with versions 0.7 and later.
+
+Those readers who would like to follow the book and its exercises to the letter are advised to install version 0.6.9.5 of the PureScript compiler and tools, and to carefully make sure that only compatible libraries are installed.
+
+A second edition of this book, which will be updated to cover new features and libraries, is currently being written.
 
 ## Getting Help
 

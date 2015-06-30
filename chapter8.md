@@ -446,7 +446,7 @@ This type reads as follows: “`fullName` takes a record with `firstName` and `l
 That is, `fullName` does not care if you pass a record with more fields, as long as the `firstName` and `lastName` properties are present:
 
 ```text
-> firstName { firstName: "Phil", lastName: "Freeman", location: "Los Angeles" }
+> fullName { firstName: "Phil", lastName: "Freeman", location: "Los Angeles" }
 
 Phil Freeman
 ```

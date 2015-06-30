@@ -322,10 +322,10 @@ Just like in the case of the `State` monad, `execWriter` only returns the accumu
 We can test our modified function in `psci`:
 
 ```text
-> :i Data.Tuple
-> :i Data.Monoid
-> :i Control.Monad.Writer
-> :i Control.Monad.Writer.Class
+> import Data.Tuple
+> import Data.Monoid
+> import Control.Monad.Writer
+> import Control.Monad.Writer.Class
 
 > runWriter (gcd 21 15)
 
@@ -360,7 +360,7 @@ A monad transformer is a type constructor which is parameterized not only by a t
 Let's see an example. The monad transformer version of the `State` monad is `StateT`, defined in the `Control.Monad.State.Trans` module. We can find the kind of `StateT` using `psci`:
 
 ```text
-> :i Control.Monad.State.Trans
+> import Control.Monad.State.Trans
 > :k StateT
 * -> (* -> *) -> * -> *
 ```
@@ -638,8 +638,8 @@ The `many` combinator uses the `Alternative` type class to repeatedly run a comp
 In the case of our `Parser` monad transformer stack, there is an instance of `Alternative` induced by the `ErrorT` component, which supports failure in the obvious way. This means that we can use the `many` and `some` functions to run a parser multiple times:
 
 ```text
-> :i Split
-> :i Control.Alternative
+> import Split
+> import Control.Alternative
 
 > runParser (many split) "test"
   

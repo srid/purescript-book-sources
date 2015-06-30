@@ -405,7 +405,7 @@ showShape :: Shape -> String
 showShape (Circle c r)      = ...
 showShape (Rectangle c w h) = ...
 showShape (Line start end)  = ...
-showShape (Circle loc text) = ...
+showShape (Text loc text) = ...
 ```
 
 Each constructor can be used as a pattern, and the arguments to the constructor can themselves be bound using patterns of their own. Consider the first case of `showShape`: if the `Shape` matches the `Circle` constructor, then we bring the arguments of `Circle` (center and radius) into scope using two variable patterns, `c` and `r`. The other cases are similar.
@@ -467,7 +467,7 @@ Let's try it out. Compile your module with `grunt` and open `psci`:
 $ grunt
 $ psci
 
-> :i Data.Picture
+> import Data.Picture
 
 > showPicture [Line (Point { x: 0, y: 0 }) (Point { x: 1, y: 1 })]
 

@@ -227,7 +227,7 @@ Note that just like function application, type constructors are applied to other
 If we try to incorrectly define a value of type `List` (by using the type annotation operator `::`), we will see a new type of error:
 
 ```text
-> :i Data.List
+> import Data.List
 > Nil :: List
 Expected type of kind *, was * -> *
 ```
@@ -244,7 +244,7 @@ To find out the kind of a type, use the `:k` command in `psci`. For example:
 > :k Number
 *
 
-> :i Data.List
+> import Data.List
 > :k List
 * -> *
 
@@ -284,12 +284,12 @@ First, build the code you've written:
 $ grunt
 ```
 
-Next, load `psci`, and use the `:i` command to import your new module:
+Next, load `psci`, and use the `import` command to import your new module:
 
 ```text
 $ psci
 
-> :i Data.PhoneBook
+> import Data.PhoneBook
 ```
 
 We can create an entry by using a record literal, which looks just like an anonymous object in JavaScript. Bind it to a name with a `let` expression:
@@ -555,7 +555,7 @@ Now that we have the core of a working application, let's try it out using `psci
 ```text
 $ psci
 
-> :i Data.PhoneBook 
+> import Data.PhoneBook 
 ```
 
 Let's first try looking up an entry in the empty phone book (we obviously expect this to return an empty result):

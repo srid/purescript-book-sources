@@ -34,7 +34,7 @@ This function is used to construct a value of type `Address` from three strings:
 We can apply this function easily and see the result in `psci`:
 
 ```text
-> :i Data.AddressBook
+> import Data.AddressBook
 
 > address "123 Fake St." "Faketown" "CA"
 Address { street: "123 Fake St.", city: "Faketown", state: "CA" }
@@ -45,7 +45,7 @@ However, suppose we did not necessarily have a street, city, or state, and wante
 In one case, we might have a missing city. If we try to apply our function directly, we will receive an error from the type checker:
 
 ```text
-> :i Data.Maybe
+> import Data.Maybe
 > address (Just "123 Fake St.") Nothing (Just "CA")
  
 Cannot unify Data.Maybe.Maybe u2 with Prim.String.
@@ -56,7 +56,7 @@ Of course, this is an expected type error - `address` takes strings as arguments
 However, it is reasonable to expect that we should be able to "lift" the `address` function to work with optional values described by the `Maybe` type. In fact, we can, and the `Control.Apply` provides the function `lift3` function which does exactly what we need:
 
 ```text
-> :i Control.Apply
+> import Control.Apply
 > lift3 address (Just "123 Fake St.") Nothing (Just "CA")
  
 Nothing
@@ -198,7 +198,7 @@ Freeman, Phillip A
 Now suppose that this function forms the implementation of a (very simple!) web service with the three arguments provided as query parameters. We want to make sure that the user provided each of the three parameters, so we might use the `Maybe` type to indicate the presence or otherwise of a parameter. We can lift `fullName` over `Maybe` to create an implementation of the webservice which checks for missing parameters:
 
 ```text
-> :i Data.Maybe
+> import Data.Maybe
 > fullName <$> Just "Phillip" <*> Just "A" <*> Just "Freeman"
   
 Just ("Freeman, Phillip A")
@@ -345,7 +345,7 @@ examplePerson =
 Test this value in `psci` (this result has been formatted):
 
 ```text
-> :i Data.AddressBook
+> import Data.AddressBook
 > examplePerson 
 
 Person { 
@@ -428,8 +428,8 @@ Notice how the `nonEmpty` and `lengthIs` validator functions both use the `inval
 We can try this function in `psci`:
 
 ```text
-> :i Data.AddressBook
-> :i Data.AddressBook.Validation
+> import Data.AddressBook
+> import Data.AddressBook.Validation
 
 > validateAddress $ address "" "" ""
   
@@ -568,7 +568,7 @@ In the case of an empty array, we can simply return an empty array using `pure`.
 But there are more examples of traversable functors than just arrays. The `Maybe` type constructor we saw earlier also has an instance for `Traversable`. We can try it in `psci`:
 
 ```text
-> :i Data.Maybe
+> import Data.Maybe
 
 > traverse (nonEmpty "Example") Nothing
   

@@ -695,8 +695,8 @@ The problem is that we have no guarantee that the JSON will have the correct for
 Let's try the `purescript-foreign` library in `psci`. Start by importing two modules:
 
 ```text
-> :i Data.Foreign
-> :i Data.Foreign.Class
+> import Data.Foreign
+> import Data.Foreign.Class
 ```
 
 A good way to obtain a `Foreign` value is to parse a JSON document. `purescript-foreign` defines the following two functions:
@@ -760,7 +760,7 @@ In each case, the type annotation applies to the term to the right of the `<$>` 
 The type `Null Number` represents values which are either numbers, or null. What if we wanted to parse more interesting values, like arrays of numbers, where each element might be `null`? In that case, we could lift the function `map runNull` over the `readJSON` action, as follows:
 
 ```text
-> :i Data.Array
+> import Data.Array
 
 > map runNull <$> readJSON "[1, 2, null]" :: F [Null Number]
 Right [Just 1, Just 2, Nothing]

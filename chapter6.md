@@ -79,7 +79,7 @@ These examples demonstrate how to `show` values of various primitive types, but 
 > show $ Tuple 1 true
 "Tuple (1) (true)"
 
-> :i Data.Maybe
+> import Data.Maybe
 > show $ Just "testing"
 "Just (\"testing\")"
 ```
@@ -87,7 +87,7 @@ These examples demonstrate how to `show` values of various primitive types, but 
 If we try to show a value of type `Data.Either`, we get an interesting error message:
 
 ```text
-> :i Data.Either
+> import Data.Either
 > show $ Left 10
   
 Error in declaration it
@@ -213,8 +213,8 @@ Again, strings and arrays are simple examples of monoids.
 A `Monoid` type class instance for a type describes how to _accumulate_ a result with that type, by starting with an "empty" value, and combining new results. For example, we can write a function which concatenates an array of values in some monoid by using a fold. In `psci`:
 
 ```haskell
-> :i Data.Monoid
-> :i Data.Foldable
+> import Data.Monoid
+> import Data.Foldable
   
 > foldl (<>) mempty ["Hello", " ", "World"]  
 "Hello World"
@@ -247,7 +247,7 @@ What about `foldMap`? Well, that becomes `forall a m. (Monoid m) => (a -> m) -> 
 Let's try out `foldMap` in `psci`:
 
 ```text
-> :i Data.Foldable
+> import Data.Foldable
 
 > foldMap show [1, 2, 3, 4, 5]
 "12345"
@@ -269,12 +269,12 @@ class Functor f where
 The operator `<$>` allows a function to be "lifted" over a data structure. The precise definition of the word "lifted" here depends on the data structure in question, but we have already seen its behavior for some simple types:
 
 ```text
-> :i Data.Array
+> import Data.Array
 > (\n -> n < 3) <$> [1, 2, 3, 4, 5]
   
 [true, true, false, false, false]
 
-> :i Data.Maybe
+> import Data.Maybe
 > Data.String.length <$> Just "testing"
   
 Just (7)

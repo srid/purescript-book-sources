@@ -81,7 +81,7 @@ merge :: [Number] -> [Number] -> [Number]
 `merge` takes two sorted arrays of numbers, and merges their elements so that the result is also sorted. For example:
 
 ```text
-> :i Merge
+> import Merge
 > merge [1, 3, 5] [2, 4, 6]
 
 [1, 2, 3, 4, 5, 6]
@@ -273,7 +273,7 @@ fromArray :: forall a. (Ord a) => [a] -> Tree a
 The `insert` function is used to insert a new element into a sorted tree, and the `member` function can be used to query a tree for a particular value. For example:
 
 ```text
-> :i Tree
+> import Tree
 
 > member 2 $ insert 1 $ insert 2 Leaf
 true
@@ -312,7 +312,7 @@ The `Merge` module defines another generalization of the `merge` function - the 
 For example, we can pass the `length` function as the first argument, to merge two arrays which are already in length-increasing order. The result should also be in length-increasing order:
 
 ```haskell
-> :i Data.String
+> import Data.String
 > mergeWith length 
     ["", "ab", "abcd"] 
     ["x", "xyz"]
@@ -425,8 +425,8 @@ For the purposes of testing, we usually include calls to the `quickCheck` functi
 We can test `quickCheckPure` using `psci`. Here, we test that the `merge` operation is associative:
 
 ```text
-> :i Test.QuickCheck
-> :i Merge
+> import Test.QuickCheck
+> import Merge
 
 > quickCheckPure 12345 10 $ \xs ys zs -> 
     ((xs `merge` ys) `merge` zs) == 

@@ -52,8 +52,8 @@ render :: Element -> String
 which renders HTML elements as HTML strings. We can try out this version of the library by constructing values of the appropriate types explicitly in `psci`:
 
 ```text
-> :i Data.DOM.Simple
-> :i Data.Maybe
+> import Data.DOM.Simple
+> import Data.Maybe
 
 > render $ Element 
     { name: "p"
@@ -230,7 +230,7 @@ module Data.DOM.Smart
 If we try this new module in `psci`, we can already see massive improvements in the conciseness of the user code:
 
 ```text
-> :i Data.DOM.Smart
+> import Data.DOM.Smart
 > render $ p [ _class := "main" ] [ text "Hello World!" ]
   
 "<p class=\"main\">Hello World!</p>"
@@ -254,7 +254,7 @@ X>     Modify the representation of an `Attribute` to take empty attributes into
 To motivate the next technique, consider the following code:
 
 ```text
-> :i Data.DOM.Phantom
+> import Data.DOM.Phantom
 > render $ img [ src    := "cat.jpg"
                , width  := "foo"
                , height := "bar" 
@@ -324,7 +324,7 @@ height = AttributeKey "height"
 Now we find it is impossible to represent these invalid HTML documents, and we are forced to use numbers to represent the `width` and `height` attributes instead:
 
 ```text
-> :i Data.DOM.Phantom
+> import Data.DOM.Phantom
 > render $ img [ src    := "cat.jpg"
                , width  := 100
                , height := 200 
@@ -377,7 +377,7 @@ However, do notation is not the only benefit of a free monad. The free monad all
 The `Free` monad is defined in the `purescript-free` library, in the `Control.Monad.Free` module. We can find out some basic information about it using `psci`, as follows:
 
 ```text
-> :i Control.Monad.Free
+> import Control.Monad.Free
 > :k Free
 (* -> *) -> * -> *
 ```
@@ -553,7 +553,7 @@ In each case, the expression `rest` has the type `Writer String a`, and represen
 That's it! We can test our new monadic API in `psci`, as follows:
 
 ```text
-> :i Data.DOM.Free
+> import Data.DOM.Free
 > render $ p [] $ do
     elem $ img [ src := "cat.jpg" ]
     text "A cat"
@@ -680,7 +680,7 @@ Here, we are given a continuation `k` of type `Name -> Interp a`, and we need to
 With that, we can try out our new functionality in `psci`, by generating a unique name inside the `Content` monad, and using it as both the name of an element and the target of a hyperlink:
 
 ```text
-> :i Data.DOM.Name
+> import Data.DOM.Name
 > render $ p [ ] $ do
     top <- newName
     elem $ a [ name := top ] $ 

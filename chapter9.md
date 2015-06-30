@@ -336,7 +336,7 @@ In this section, we'll use the `purescript-refs` package to demonstrate another 
 The `Control.Monad.Eff.Ref` module provides a type constructor for global mutable references, and an associated effect:
 
 ```text
-> :i Control.Monad.Eff.Ref
+> import Control.Monad.Eff.Ref
 
 > :k RefVal
 * -> *

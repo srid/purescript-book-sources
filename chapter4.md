@@ -88,7 +88,7 @@ Let's try out the `map` function in `psci`:
 ```text
 $ psci
 
-> :i Data.Array
+> import Data.Array
 > map (\n -> n + 1) [1, 2, 3, 4, 5]
 
 [2, 3, 4, 5, 6]
@@ -185,7 +185,7 @@ The `Data.Array` module provides another function `filter`, which is commonly us
 For example, suppose we wanted to compute an array of all numbers between 1 and 10 which were even. We could do so as follows:
 
 ```text
-> :i Data.Array
+> import Data.Array
 
 > filter (\n -> n % 2 == 0) (1 .. 10)
 [2,4,6,8,10]
@@ -202,7 +202,7 @@ X> 1. (Medium) Define an infix synonym `<$?>` for `filter`. Rewrite your answer 
 Another standard function on arrays is the `concat` function, defined in `Data.Array`. `concat` flattens an array of arrays into a single array:
 
 ```text
-> :i Data.Array
+> import Data.Array
 > :t concat 
 
 forall a. [[a]] -> [a]
@@ -217,7 +217,7 @@ There is a related function called `concatMap` which is like a combination of th
 Let's see it in action:
 
 ```text
-> :i Data.Array
+> import Data.Array
 
 > :t concatMap
 forall a b. (a -> [b]) -> [a] -> [b]
@@ -275,7 +275,7 @@ This is looking better. However, we are generating too many pairs: we keep both 
 Great! Now that we have all of the pairs of potential factors, we can use `filter` to choose the pairs which multiply to give `n`:
 
 ```text
-> :i Data.Foldable
+> import Data.Foldable
 
 > let factors n = filter (\pair -> product pair == n) (pairs n)
   
@@ -348,7 +348,7 @@ Just like `return`, the `guard` function is _not_ a keyword. We can apply it lik
 The type of the `guard` function is more general than we need here:
 
 ```text
-> :i Control.MonadPlus
+> import Control.MonadPlus
 > :t guard
 
 forall m. (MonadPlus m) => Boolean -> m Unit
@@ -363,7 +363,7 @@ Boolean -> [Unit]
 For our purposes, the following calculations tell us everything we need to know about the `guard` function on arrays:
 
 ```text
-> :i Data.Array
+> import Data.Array
 > length $ guard true
 
 1
@@ -392,7 +392,7 @@ Left and right folds over arrays provide another class of interesting functions 
 Start by importing the `Data.Foldable` module, and inspecting the types of the `foldl` and `foldr` functions using `psci`:
 
 ```text
-> :i Data.Foldable
+> import Data.Foldable
 
 > :t foldl
 forall a b f. (Foldable f) => (b -> a -> b) -> b -> f a -> b
@@ -523,7 +523,7 @@ If we can write our recursive functions using tail recursion, then we can benefi
 For example, the `reverse` example can be written as a fold in at least two ways. Here is a version which uses `foldr`:
 
 ```text
-> :i Data.Foldable
+> import Data.Foldable
 > let reverse :: forall a. [a] -> [a]
       reverse = foldr (\x xs -> xs ++ [x]) []
   
@@ -578,7 +578,7 @@ isDirectory :: Path -> Boolean
 We can try out the API in `psci`:
 
 ```text
-> :i Data.Path
+> import Data.Path
 
 > root
 /
@@ -611,8 +611,8 @@ allFiles file = file : concatMap allFiles (ls file)
 Let's try this function in `psci`:
 
 ```text
-> :i FileOperations
-> :i Data.Path
+> import FileOperations
+> import Data.Path
 
 > allFiles root
   

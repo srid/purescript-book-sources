@@ -40,7 +40,7 @@ The PureScript compiler can either be installed globally, or in a Cabal sandbox 
 Install PureScript from Hackage using the `cabal install` command:
 
 ```text
-$ cabal install purescript
+$ cabal install purescript-0.6.9.5
 ```
 
 The compiler and associated executables will now be available on your path. Try running the PureScript compiler on the command line to verify this:
@@ -362,12 +362,16 @@ You can type `:?` to see a list of commands:
 > :?
 The following commands are available:
 
-    :?              Show this help menu
-    :i <module>     Import <module> for use in PSCI
-    :m <file>       Load <file> for importing
-    :q              Quit PSCi
-    :r              Reset
-    :t <expr>       Show the type of <expr>
+    :?                        Show this help menu
+    :quit                     Quit PSCi
+    :reset                    Discard all imported modules and declared bindings
+    :browse      <module>     See all functions in <module>
+    :load        <file>       Load <file> for importing
+    :foreign     <file>       Load foreign module <file>
+    :type        <expr>       Show the type of <expr>
+    :kind        <type>       Show the kind of <type>
+    :show        import       Show all imported modules
+    :show        loaded       Show all loaded modules
 ```
 
 By pressing the Tab key, you should be able to see a list of all functions available in your own code, as well as any Bower dependencies and the Prelude modules.
