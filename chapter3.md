@@ -4,16 +4,18 @@
 
 This chapter will introduce two building blocks of PureScript programs: functions and records. In addition, we'll see how to structure PureScript programs, and how to use types as an aid to program development.
 
-We will build a simple phone-book application to manage a list of phone contacts. This code will introduce some new ideas from the syntax of PureScript.
+We will build a simple address book application to manage a list of contacts. This code will introduce some new ideas from the syntax of PureScript.
 
-The front-end of our application will be the interactive mode `psci`, but it would be possible to build on this code to write a front-end in Javascript.
+The front-end of our application will be the interactive mode PSCi, but it would be possible to build on this code to write a front-end in Javascript. In fact, we will do exactly that in later chapters, adding form validation and save/restore functionality.
 
 ## Project Setup
 
-The source code for this chapter is contained in the file `src/Data/PhoneBook.purs`. This file starts with a module declaration and its import list:
+The source code for this chapter is contained in the file `src/Data/AddressBook.purs`. This file starts with a module declaration and its import list:
 
 ```haskell
-module Data.PhoneBook where
+module Data.AddressBook where
+
+import Prelude
 
 import Data.List
 import Data.Maybe
@@ -27,36 +29,51 @@ The `Data.Maybe` module defines data types and functions for working with option
 
 The `Control.Plus` module defines the `empty` value, which we will need later. Notice that the imports for this module are listed explicitly in parentheses. This is generally a good practice, as it helps to avoid conflicting imports.
 
-## Simple Types
-
-PureScript defines three built-in types which correspond to JavaScript's primitive types: numbers, strings and booleans. These are defined in the `Prim` module, which is implicitly imported by every module. They are called, respectively, `Number`, `String`, and `Boolean`, and you can see them in `psci` by using the `:t` command to print the types of some simple values:
+The project for this chapter can be built using Pulp, with the following commands:
 
 ```text
-$ psci
+$ cd chapter3
+$ pulp dep update
+$ pulp build
+```
 
-> :t 1
+## Simple Types
+
+PureScript defines three built-in types which correspond to JavaScript's primitive types: numbers, strings and booleans. These are defined in the `Prim` module, which is implicitly imported by every module. They are called, respectively, `Number`, `String`, and `Boolean`, and you can see them in PSCi by using the `:type` command to print the types of some simple values:
+
+```text
+$ pulp psci
+
+> :type 1.0
 Prim.Number
 
-> :t "test"
+> :type "test"
 Prim.String
 
-> :t true
+> :type true
 Prim.Boolean
 ```
 
-PureScript defines three other built-in types: arrays, records, and functions. 
+PureScript defines four other built-in types: integers, arrays, records, and functions.
+
+Integers are differentiated from floating point values of type `Number` by the lack of a decimal point:
+
+```text
+> :type 1
+Prim.Int
+```
 
 Arrays correspond to JavaScript arrays, but unlike in JavaScript, all elements of a PureScript array must have the same type:
 
 ```text
-> :t [1, 2, 3]
-[Prim.Number]
+> :type [1, 2, 3]
+Prim.Array Prim.Int
 
-> :t [true, false]
-[Prim.Boolean]
+> :type [true, false]
+Prim.Array Prim.Boolean
 
-> :t [1, false]
-Cannot unify Prim.Number with Prim.Boolean.
+> :type [1, false]
+Cannot unify Prim.Int with Prim.Boolean.
 ```
 
 The error in the last example is an error from the type checker, which unsuccessfully attempted to _unify_ (i.e. make equal) the types of the two elements.
@@ -64,16 +81,13 @@ The error in the last example is an error from the type checker, which unsuccess
 Records correspond to JavaScript's objects, and record literals have the same syntax as JavaScript's object literals:
 
 ```text
-> let author = 
-        { name: "Phil"
-        , interests: ["Functional Programming", "JavaScript"] 
-        }
+> let author = { name: "Phil", interests: ["Functional Programming", "JavaScript"] }
 
-> :t author
-{ name :: Prim.String, interests :: [Prim.String] }
+> :type author
+{ name :: Prim.String, interests :: Prim.Array Prim.String }
 ```
 
-This type indicates that the specified object has two _fields_, a `name` field which has type `String`, and an `interests` field, which has type `[String]`, i.e. an array of `String`s.
+This type indicates that the specified object has two _fields_, a `name` field which has type `String`, and an `interests` field, which has type `Array String`, i.e. an array of `String`s.
 
 Fields of records can be accessed using a dot, followed by the label of the field to access:
 
@@ -88,29 +102,29 @@ Fields of records can be accessed using a dot, followed by the label of the fiel
 PureScript's functions correspond to JavaScript's functions. The PureScript standard libraries provide plenty of examples of functions, and we will see more in this chapter:
 
 ```text
-> :t Prelude.flip
+> :type Prelude.flip
 forall a b c. (a -> b -> c) -> b -> a -> c
 
-> :t Prelude.const
+> :type Prelude.const
 forall a b. a -> b -> a
 ```
 
 Functions can be defined at the top-level of a file by specifying arguments before the equals sign:
 
 ```haskell
-add :: Number -> Number -> Number
+add :: Int -> Int -> Int
 add x y = x + y
 ```
 
-Alternatively, functions can be defined inline, by using a backslash character followed by a space-delimited list of argument names:
+Alternatively, functions can be defined inline, by using a backslash character followed by a space-delimited list of argument names. To enter a multi-line declaration in PSCi, we can use multi-line mode, by starting PSCi with the `-m` (or `--multi-line-mode`) option. In this mode, declarations are terminated using the _Control-D_ key sequence:
 
 ```text
 > let 
-    add :: Number -> Number -> Number
+    add :: Int -> Int -> Int
     add = \x y -> x + y
 ```
 
-Having defined this function in `psci`, we can _apply_ it to its arguments by separating the two arguments from the function name by whitespace:
+Having defined this function in PSCi, we can _apply_ it to its arguments by separating the two arguments from the function name by whitespace:
 
 ```text
 > add 10 20
@@ -119,19 +133,19 @@ Having defined this function in `psci`, we can _apply_ it to its arguments by se
 
 ## Quantified Types
 
-In the last section, we saw the types of some functions defined in the Prelude. For example, the `flip` function had the following type:
+In the previous section, we saw the types of some functions defined in the Prelude. For example, the `flip` function had the following type:
 
 ```text
-> :t Prelude.flip
+> :type Prelude.flip
 forall a b c. (a -> b -> c) -> b -> a -> c
 ```
 
 The keyword `forall` here indicates that `flip` has a _universally quantified type_. It means that we can substitute any types for `a`, `b` and `c`, and `flip` will work with those types.
 
-For example, we might choose the type `a` to be `Number`, `b` to be `String` and `c` to be `String`. In that case we could _specialize_ the type of `flip` to
+For example, we might choose the type `a` to be `Int`, `b` to be `String` and `c` to be `String`. In that case we could _specialize_ the type of `flip` to
 
 ```text
-(Number -> String -> String) -> String -> Number -> String
+(Int -> String -> String) -> String -> Int -> String
 ```
 
 We don't have to indicate in code that we want to specialize a quantified type - it happens automatically. For example, we can just use `flip` as if it had this type already:
@@ -173,7 +187,7 @@ y + z
 
 In the second case, the PureScript compiler will parse _two_ declarations, one for each line.
 
-Generally, any declarations defined in the same block should be indented at the same level. For example, in `psci`, declarations in a let statement must be indented equally. This is valid:
+Generally, any declarations defined in the same block should be indented at the same level. For example, in PSCi with multi-line mode turned on, declarations in a let statement must be indented equally. This is valid:
 
 ```text
 > let x = 1
@@ -202,21 +216,35 @@ The only exception to this rule is the `where` keyword in the initial `module` d
 
 ## Defining Our Types
 
-A good first step when tackling a new problem in PureScript is to write out type definitions for any values you will be working with. First, let's define a type for records in our phone book:
+A good first step when tackling a new problem in PureScript is to write out type definitions for any values you will be working with. First, let's define a type for records in our address book:
 
 ```haskell
-type Entry = { firstName :: String, lastName :: String, phone :: String }
+type Entry =
+  { firstName :: String
+  , lastName  :: String
+  , address   :: Address
+  }
 ```
 
-This defines a _type synonym_ called `Entry` - the type `Entry` is equivalent to the type on the right of the equals symbol: a record type with three fields - `firstName`, `lastName` and `phone`, all of which are strings.
-
-Now let's define a second type synonym, for a phone book data structure, which will simply be stored as a linked list of entries:
+This defines a _type synonym_ called `Entry` - the type `Entry` is equivalent to the type on the right of the equals symbol: a record type with three fields - `firstName`, `lastName` and `address`. The two name fields will have type `String`, and the `address` field will have type `Address`, defined as follows:
 
 ```haskell
-type PhoneBook = List Entry
+type Address =
+  { street :: String
+  , city   :: String
+  , state  :: String
+  }
 ```
 
-Note that `List Entry` is not the same as `[Entry]`, which represents an _array_ of entries.
+Note that records can contain other records.
+
+Now let's define a third type synonym, for our address book data structure, which will represented simply as a linked list of entries:
+
+```haskell
+type AddressBook = List Entry
+```
+
+Note that `List Entry` is not the same as `Array Entry`, which represents an _array_ of entries.
 
 ## Type Constructors and Kinds
 
@@ -238,25 +266,25 @@ There is a special kind called `*` which represents the kind of all types which 
 
 There are also kinds for type constructors. For example, the kind `* -> *` represents a function from types to types, just like `List`. So the error here occurred because values are expected to have types with kind `*`, but `List` has kind `* -> *`.
 
-To find out the kind of a type, use the `:k` command in `psci`. For example:
+To find out the kind of a type, use the `:kind` command in PSCi. For example:
 
 ```text
-> :k Number
+> :kind Number
 *
 
 > import Data.List
-> :k List
+> :kind List
 * -> *
 
-> :k List String
+> :kind List String
 *
 ```
 
-PureScript's _kind system_ supports other interesting kinds, which we will see in other parts of the book.
+PureScript's _kind system_ supports other interesting kinds, which we will see later in the book.
 
-## Displaying Phone Book Entries
+## Displaying Address Book Entries
 
-Let's write our first function, which will render a phone book entry as a string. We start by giving the function a type. This is optional, but good practice, since it acts as a form of documentation. A type declaration separates the name of a function from its type with the `::` symbol:
+Let's write our first function, which will render an address book entry as a string. We start by giving the function a type. This is optional, but good practice, since it acts as a form of documentation. A type declaration separates the name of a function from its type with the `::` symbol:
 
 ```haskell
 showEntry :: Entry -> String
@@ -267,72 +295,86 @@ This type signature says that `showEntry` is a function, which takes an `Entry` 
 ```haskell
 showEntry entry = entry.lastName ++ ", " ++ 
                   entry.firstName ++ ": " ++ 
-                  entry.phone
+                  showAddress entry.address
 ```
 
-This function concatenates the three fields of the `Entry` record into a single string. 
+This function concatenates the three fields of the `Entry` record into a single string, using the `showAddress` function to turn the record inside the `address` field into a `String`. `showAddress` is defined similarly:
+
+```haskell
+showAddress :: Address -> String
+showAddress addr = addr.street ++ ", " ++ 
+                   addr.city ++ ", " ++ 
+                   addr.state
+```
 
 A function definition begins with the name of the function, followed by a list of argument names. The result of the function is specified after the equals sign. Fields are accessed with a dot, followed by the field name. In PureScript, string concatenation uses the double-plus operator (`++`), instead of a single plus like in Javascript.
 
 ## Test Early, Test Often
 
-The `psci` interactive mode allows for rapid prototyping with immediate feedback, so let's use it to verify that our first function behaves as expected.
+The PSCi interactive mode allows for rapid prototyping with immediate feedback, so let's use it to verify that our first few functions behave as expected.
 
 First, build the code you've written:
 
 ```text
-$ grunt
+$ pulp build
 ```
 
-Next, load `psci`, and use the `import` command to import your new module:
+Next, load PSCi, and use the `import` command to import your new module:
 
 ```text
-$ psci
+$ pulp psci
 
-> import Data.PhoneBook
+> import Data.AddressBook
 ```
 
 We can create an entry by using a record literal, which looks just like an anonymous object in JavaScript. Bind it to a name with a `let` expression:
 
 ```text
-> let example = { firstName: "John", lastName: "Smith", phone: "555-555-5555" }
+> let address = { street: "123 Fake St.", city: "Faketown", state: "CA" }
 ```
 
 (don't forget to terminate the expression with Ctrl+D). Now, try applying our function to the example:
 
 ```text
-> showEntry example
+> showAddress address
 
-"Smith, John: 555-555-5555"
+"123 Fake St., Faketown, CA"
 ```
 
-Congratulations! You've just written and executed your first PureScript function.
+Let's also test `showEntry` by creating an address book entry record containing our example address:
 
-## Creating Phone Books
+```text
+> let entry = { firstName: "John", lastName: "Smith", address: address }
+> showEntry entry
 
-Now let's write some utility functions for working with phone books. We will need a value which represents an empty phone book: an empty list.
+"Smith, John: 123 Fake St., Faketown, CA"
+```
+
+## Creating Address Books
+
+Now let's write some utility functions for working with address books. We will need a value which represents an empty address book: an empty list.
 
 ```haskell
-emptyBook :: PhoneBook
+emptyBook :: AddressBook
 emptyBook = empty
 ```
 
-We will also need a function for inserting a value into an existing phone book. We will call this function `insertEntry`. Start by giving its type:
+We will also need a function for inserting a value into an existing address book. We will call this function `insertEntry`. Start by giving its type:
 
 ```haskell
-insertEntry :: Entry -> PhoneBook -> PhoneBook
+insertEntry :: Entry -> AddressBook -> AddressBook
 ```
 
-This type signature says that `insertEntry` takes an `Entry` as its first argument, and a `PhoneBook` as a second argument, and returns a new `PhoneBook`.
+This type signature says that `insertEntry` takes an `Entry` as its first argument, and a `AddressBook` as a second argument, and returns a new `AddressBook`.
 
-We don't modify the existing `PhoneBook` directly. Instead, we return a new `PhoneBook` which contains the same data. As such, `PhoneBook` is an example of a _persistent data structure_. This is an important idea in PureScript - mutation is a side-effect of code, and inhibits our ability to reason effectively about its behavior, so we prefer pure functions and immutable data where possible.
+We don't modify the existing `AddressBook` directly. Instead, we return a new `AddressBook` which contains the same data. As such, `AddressBook` is an example of a _persistent data structure_. This is an important idea in PureScript - mutation is a side-effect of code, and inhibits our ability to reason effectively about its behavior, so we prefer pure functions and immutable data where possible.
 
-To implement `insertEntry`, we can use the `Cons` function from `Data.List`. To see its type, open `psci` and use the `:t` command:
+To implement `insertEntry`, we can use the `Cons` function from `Data.List`. To see its type, open PSCi and use the `:type` command:
 
 ```text
-$ psci
+$ pulp psci
 
-> :t Data.List.Cons
+> :type Data.List.Cons
 
 forall a. a -> List a -> List a
 ```
@@ -343,13 +385,13 @@ This type signature says that `Cons` takes a value of some type `a`, and a list 
 Entry -> List Entry -> List Entry
 ``` 
 
-But `List Entry` is just `PhoneBook`, so this is equivalent to
+But `List Entry` is just `AddressBook`, so this is equivalent to
 
 ```haskell
-Entry -> PhoneBook -> PhoneBook
+Entry -> AddressBook -> AddressBook
 ```
 
-In our case, we already have the appropriate inputs: an `Entry`, and a `PhoneBook`, so can apply `Cons` and get a new `PhoneBook`, which is exactly what we wanted!
+In our case, we already have the appropriate inputs: an `Entry`, and a `AddressBook`, so can apply `Cons` and get a new `AddressBook`, which is exactly what we wanted!
 
 Here is our implementation of `insertEntry`:
 
@@ -366,31 +408,31 @@ Functions in PureScript take exactly one argument. While it looks like the `inse
 The `->` operator in the type of `insertEntry` associates to the right, which means that the compiler parses the type as 
 
 ```haskell
-Entry -> (PhoneBook -> PhoneBook)
+Entry -> (AddressBook -> AddressBook)
 ```
 
-That is, `insertEntry` is a function which returns a function! It takes a single argument, an `Entry`, and returns a new function, which in turn takes a single `PhoneBook` argument and returns a new `PhoneBook`.
+That is, `insertEntry` is a function which returns a function! It takes a single argument, an `Entry`, and returns a new function, which in turn takes a single `AddressBook` argument and returns a new `AddressBook`.
 
-This means that we can _partially apply_ `insertEntry` by specifying only its first argument, for example. In `psci`, we can see the result type:
+This means that we can _partially apply_ `insertEntry` by specifying only its first argument, for example. In PSCi, we can see the result type:
 
 ```text
-> :t insertEntry example
+> :type insertEntry example
 
-PhoneBook -> PhoneBook
+AddressBook -> AddressBook
 ```
 
 As expected, the return type was a function. We can apply the resulting function to a second argument:
 
 ```text
-> :t (insertEntry example) emptyBook
-PhoneBook
+> :type (insertEntry example) emptyBook
+AddressBook
 ```
 
 Note though that the parentheses here are unnecessary - the following is equivalent:
 
 ```text
-> :t insertEntry example emptyBook
-PhoneBook
+> :type insertEntry example emptyBook
+AddressBook
 ```
 
 This is because function application associates to the left, and this explains why we can just specify function arguments one after the other, separated by whitespace.
@@ -400,21 +442,21 @@ Note that in the rest of the book, I will talk about things like "functions of t
 Now consider the definition of `insertEntry`:
 
 ```haskell
-insertEntry :: Entry -> PhoneBook -> PhoneBook
+insertEntry :: Entry -> AddressBook -> AddressBook
 insertEntry entry book = Cons entry book
 ```
 
 If we explicitly parenthesize the right-hand side, we get `(Cons entry) book`. That is, `insertEntry entry` is a function whose argument is just passed along to the `(Cons entry)` function. But if two functions have the same result for every input, then they are the same function! So we can remove the argument `book` from both sides:
 
 ```haskell
-insertEntry :: Entry -> PhoneBook -> PhoneBook
+insertEntry :: Entry -> AddressBook -> AddressBook
 insertEntry entry = Cons entry
 ```
 
 But now, by the same argument, we can remove `entry` from both sides:
 
 ```haskell
-insertEntry :: Entry -> PhoneBook -> PhoneBook
+insertEntry :: Entry -> AddressBook -> AddressBook
 insertEntry = Cons
 ```
 
@@ -424,20 +466,20 @@ In the case of `insertEntry`, _eta conversion_ has resulted in a very clear defi
 
 ## What's Your Number?
 
-The last function we need to implement for our minimal phone book application will look up a person by name and return the correct `Entry`. This will be a nice application of building programs by composing small functions - a key idea from functional programming.
+The last function we need to implement for our minimal address book application will look up a person by name and return the correct `Entry`. This will be a nice application of building programs by composing small functions - a key idea from functional programming.
 
-We can first filter the phone book, keeping only those entries with the correct first and last names. Then we can simply return the head (i.e. first) element of the resulting list.
+We can first filter the address book, keeping only those entries with the correct first and last names. Then we can simply return the head (i.e. first) element of the resulting list.
 
-With this high-level specification of our approach, we can calculate the type of our function. First open `psci`, and find the types of the `filter` and `head` functions:
+With this high-level specification of our approach, we can calculate the type of our function. First open PSCi, and find the types of the `filter` and `head` functions:
 
 ```text
-$ psci
+$ pulp psci
 
-> :t Data.List.filter
+> :type Data.List.filter
 
 forall a. (a -> Boolean) -> List a -> List a
 
-:t Data.List.head
+> :type Data.List.head
 
 forall a. List a -> Maybe a
 ```
@@ -451,22 +493,22 @@ Let's pick apart these two types to understand their meaning.
 The universally quantified types of `filter` and `head` can be _specialized_ by the PureScript compiler, to the following types:
 
 ```haskell
-filter :: (Entry -> Boolean) -> PhoneBook -> PhoneBook
+filter :: (Entry -> Boolean) -> AddressBook -> AddressBook
 
-head :: PhoneBook -> Maybe Entry
+head :: AddressBook -> Maybe Entry
 ```
 
 We know that we will need to pass the first and last names that we want to search for, as arguments to our function.
 
-We also know that we will need a function to pass to `filter`. Let's call this function `filterEntry`. `filterEntry` will have type `Entry -> Boolean`. The application `filter filterEntry` will then have type `PhoneBook -> PhoneBook`. If we pass the result of this function to the `head` function, we get our result of type `Maybe Entry`.
+We also know that we will need a function to pass to `filter`. Let's call this function `filterEntry`. `filterEntry` will have type `Entry -> Boolean`. The application `filter filterEntry` will then have type `AddressBook -> AddressBook`. If we pass the result of this function to the `head` function, we get our result of type `Maybe Entry`.
 
 Putting these facts together, a reasonable type signature for our function, which we will call `findEntry`, is:
 
 ```haskell
-findEntry :: String -> String -> PhoneBook -> Maybe Entry
+findEntry :: String -> String -> AddressBook -> Maybe Entry
 ```
 
-This type signature says that `findEntry` takes two strings, the first and last names, and a `PhoneBook`, and returns an optional `Entry`. The optional result will contain a value only if the name is found in the phone book.
+This type signature says that `findEntry` takes two strings, the first and last names, and a `AddressBook`, and returns an optional `Entry`. The optional result will contain a value only if the name is found in the address book.
 
 And here is the definition of `findEntry`:
 
@@ -479,7 +521,7 @@ findEntry firstName lastName book = head $ filter filterEntry book
 
 Let's go over this code step by step.
 
-`findEntry` brings three names into scope: `firstName`, and `lastName`, both representing strings, and `book`, a `PhoneBook`.
+`findEntry` brings three names into scope: `firstName`, and `lastName`, both representing strings, and `book`, a `AddressBook`.
 
 The right hand side of the definition combines the `filter` and `head` functions: first, the list of entries is filtered, and the `head` function is applied to the result.
 
@@ -550,26 +592,26 @@ I will let you make your own decision which definition is easier to understand, 
 
 ## Tests, Tests, Tests ...
 
-Now that we have the core of a working application, let's try it out using `psci`.
+Now that we have the core of a working application, let's try it out using PSCi.
 
 ```text
-$ psci
+$ pulp psci
 
-> import Data.PhoneBook 
+> import Data.AddressBook 
 ```
 
-Let's first try looking up an entry in the empty phone book (we obviously expect this to return an empty result):
+Let's first try looking up an entry in the empty address book (we obviously expect this to return an empty result):
 
 ```text
 > findEntry "John" "Smith" emptyBook
 
 Error in declaration main
-No instance found for Prelude.Show (Data.Maybe.Maybe Data.PhoneBook.Entry<>)
+No instance found for $PSCI.Support.Eval (Data.Maybe.Maybe Data.AddressBook.Entry<>)
 ```
 
-An error! Not to worry, this error simply means that `psci` doesn't know how to print a value of type `Entry` as a String. 
+An error! Not to worry, this error simply means that PSCi doesn't know how to print a value of type `Entry` as a String. 
 
-The return type of `findEntry` is `Maybe Entry`, which we can convert to a String by hand. 
+The return type of `findEntry` is `Maybe Entry`, which we can convert to a `String` by hand. 
 
 Our `showEntry` function expects an argument of type `Entry`, but we have a value of type `Maybe Entry`. Remember that this means that the function returns an optional value of type `Entry`. What we need to do is apply the `showEntry` function if the optional value is present, and propagate the missing value if not.
 
@@ -589,33 +631,31 @@ For ease of use, we can create a function which prints an `Entry` as a String, s
 > let printEntry firstName lastName book = showEntry <$> findEntry firstName lastName book
 ```
 
-Now let's create a non-empty phone book, and try again. We'll reuse our example entry from earlier:
+Now let's create a non-empty address book, and try again. We'll reuse our example entry from earlier:
 
 ```text
-> let john = { firstName: "John", lastName: "Smith", phone: "555-555-5555" }
-
-> let book1 = insertEntry john emptyBook
+> let book1 = insertEntry entry emptyBook
 
 > printEntry "John" "Smith" book1
 
-Just ("Smith, John: 555-555-5555")
+Just ("Smith, John: 123 Fake St., Faketown, CA")
 ```
 
-This time, the result contained the correct value. Try defining a phone book `book2` with two names by inserting another name into `book1`, and look up each entry by name.
+This time, the result contained the correct value. Try defining an address book `book2` with two names by inserting another name into `book1`, and look up each entry by name.
 
 X> ## Exercises
 X> 
 X> 1. (Easy) Test your understanding of the `findEntry` function by writing down the types of each of its major subexpressions. For example, the type of the `head` function as used is specialized to `List Entry -> Maybe Entry`.
-X> 1. (Easy) Write a function which looks up an `Entry` given a phone number, by reusing the existing code in `findEntry`. Test your function in `psci`.
-X> 1. (Moderate) Write a function which tests whether a name appears in a `PhoneBook`, returning a Boolean value. _Hint_: Use `psci` to find the type of the `Data.List.null` function, which test whether a list is empty or not.
-X> 1. (Difficult) Write a function `removeDuplicates` which removes duplicate phone book entries with the same first and last names. _Hint_: Use `psci` to find the type of the `Data.List.nubBy` function, which removes duplicate elements from a list based on an equality predicate.
+X> 1. (Medium) Write a function which looks up an `Entry` given a street address, by reusing the existing code in `findEntry`. Test your function in PSCi.
+X> 1. (Medium) Write a function which tests whether a name appears in a `AddressBook`, returning a Boolean value. _Hint_: Use PSCi to find the type of the `Data.List.null` function, which test whether a list is empty or not.
+X> 1. (Difficult) Write a function `removeDuplicates` which removes duplicate address book entries with the same first and last names. _Hint_: Use PSCi to find the type of the `Data.List.nubBy` function, which removes duplicate elements from a list based on an equality predicate.
 
 ## Conclusion
 
 In this chapter, we covered several new functional programming concepts:
 
 - The importance of immutable data and pure functions.
-- How to use the interactive mode `psci` to experiment with functions and test ideas.
+- How to use the interactive mode PSCi to experiment with functions and test ideas.
 - The role of types as both a correctness tool, and an implementation tool.
 - The use of curried functions to represent functions of multiple arguments.
 - Creating programs from smaller components by composition.

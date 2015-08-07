@@ -26,6 +26,8 @@ The module imports the `Data.Foldable` module, which provides functions for fold
 ```haskell
 module Data.Picture where
 
+import Prelude
+
 import Data.Foldable
 ```
 
@@ -34,7 +36,7 @@ import Data.Foldable
 Let's begin by looking at an example. Here is a function which computes the greatest common divisor of two integers using pattern matching:
 
 ```haskell
-gcd :: Number -> Number -> Number
+gcd :: Int -> Int -> Int
 gcd n 0 = n
 gcd 0 m = m
 gcd n m = if n > m then gcd (n - m) m else gcd n (m - n)
@@ -56,12 +58,12 @@ Note that patterns can bind values to names - each line in the example binds one
 
 The example code above demonstrates two types of patterns:
 
-- Numeric literals patterns, which match something of type `Number`, only if the value matches exactly.
+- Integer literals patterns, which match something of type `Int`, only if the value matches exactly.
 - Variable patterns, which bind their argument to a name
 
 There are other types of simple patterns:
 
-- String and Boolean literals
+- `Number`, `String` and `Boolean` literals
 - Wildcard patterns, indicated with an underscore (`_`), which match any argument, and which do not bind any names.
 
 Here are two more examples which demonstrate using these simple patterns:
@@ -76,7 +78,7 @@ toString true  = "true"
 toString false = "false"
 ```
 
-Try these functions in `psci`.
+Try these functions in PSCi.
 
 ## Guards
 
@@ -88,29 +90,25 @@ A guard is a boolean-valued expression which must be satisfied in addition to th
 gcd :: Number -> Number -> Number
 gcd n 0 = n
 gcd 0 n = n
-gcd n m | n > m = gcd (n - m) m 
-gcd n m         = gcd n (m - n)
+gcd n m | n > m     = gcd (n - m) m 
+        | otherwise = gcd n (m - n)
 ```
 
 In this case, the third line uses a guard to impose the extra condition that the first argument is strictly larger than the second.
 
-As this example demonstrates, guard appear on the left of the equals symbol, separated from the list of patterns by a pipe character (`|`).
+As this example demonstrates, guards appear on the left of the equals symbol, separated from the list of patterns by a pipe character (`|`).
 
 X> ## Exercises
 X> 
 X> 1. (Easy) Write the factorial function using pattern matching. _Hint_. Consider the two cases zero and non-zero inputs.
 X> 1. (Medium) Look up _Pascal's Rule_ for computing binomial coefficients. Use it to write a function which computes binomial coefficients using pattern matching.
 
-## Matching Arrays
-
-Let's look at ways in which we can match arrays using patterns. There are two types of array pattern: array literal patterns, and cons patterns.
-
-### Array Literal Patterns
+## Array Patterns
 
 _Array literal patterns_ provide a way to match arrays of a fixed length. For example, suppose we want to write a function `isEmpty` which identifies empty arrays. We could do this by using an empty array pattern (`[]`) in the first alternative:
 
 ```haskell
-isEmpty :: forall a. [a] -> Boolean
+isEmpty :: forall a. Array a -> Boolean
 isEmpty [] = true
 isEmpty _ = false
 ```
@@ -118,12 +116,12 @@ isEmpty _ = false
 Here is another function which matches arrays of length five, binding each of its five elements in a different way:
 
 ```haskell
-takeFive :: [Number] -> Number
+takeFive :: Array Int -> Int
 takeFive [0, 1, a, b, _] = a * b
 takeFive _ = 0
 ```
 
-The first pattern only matches arrays with five elements, whose first and second elements are 0 and 1 respectively. In that case, the function returns the product of the third and fourth elements. In every other case, the function returns zero. For example, in `psci`:
+The first pattern only matches arrays with five elements, whose first and second elements are 0 and 1 respectively. In that case, the function returns the product of the third and fourth elements. In every other case, the function returns zero. For example, in PSCi:
 
 ```text
 > let takeFive [0, 1, a, b, _] = a * b
@@ -139,59 +137,31 @@ The first pattern only matches arrays with five elements, whose first and second
 0
 ```
 
-### Cons Patterns
-
-_Cons patterns_ are used to match non-empty arrays. They provide a way to separate the first element (or head) of an array, and the rest (or tail) of the array.
-
-Cons patterns consist of a pattern for the head element, and a pattern for the tail, separated by a colon (`:`). For example, here is a function which sums the squares in an array of numbers:
-
-```haskell
-sumOfSquares :: [Number] -> Number
-sumOfSquares [] = 0
-sumOfSquares (n : ns) = n * n + sumOfSquares ns
-```
-
-This function works by separating the input into two cases: empty and non-empty arrays. If the array is empty, then the sum of squares is zero. If not, then we separate the head and tail of the array using a cons pattern, square the head element, and add it to the sum of the squares of the tail.
-
-Here is another example. This function finds the sum of all products of adjacent pairs in a list of numbers:
-
-```haskell
-sumOfProducts :: [Number] -> Number
-sumOfProducts [] = 0
-sumOfProducts [_] = 0
-sumOfProducts (n : m : ns) = n * m + sumOfProducts (m : ns)
-```
-
-This function splits the input into three cases: zero elements, one element, and two or more elements. In the last case, we multiply the first two elements, and recurse on the tail.
-
-X> ## Exercises
-X> 
-X> 1. (Easy) Write a function `allTrue` which determines if all elements of an array of Boolean values are equal to `true`.
-X> 2. (Medium) Write a function `isSorted` which tests if an array of numbers is sorted.
+Array literal patterns allow us to match arrays of a fixed length, but PureScript does _not_ provide any means of matching arrays of an unspecified length. In older versions of the compiler, a feature called _cons patterns_ provided a way to break arrays into their head element and tail, but due to the poor performance of immutable arrays in Javascript, this feature was removed. If you need a data structure which supports this sort of matching, the recommended approach is to use `Data.List. Other data structures exist which provide improved asymptotic performance for different operations.
 
 ## Record Patterns and Row Polymorphism
 
 _Record patterns_ are used to match - you guessed it - records.
 
-Record patterns look like record literals, but instead of colons to separate labels from expressions, record patterns use equals symbols to separate labels from patterns. 
+Record patterns look just like record literals, but instead of values on the right of the colon, we specify a binder for each field.
 
 For example: this pattern matches any record which contains fields called `first` and `last`, and binds their values to the names `x` and `y` respectively:
 
 ```haskell
 showPerson :: { first :: String, last :: String } -> String
-showPerson { first = x, last = y } = y ++ ", " ++ x
+showPerson { first: x, last: y } = y ++ ", " ++ x
 ```
 
 Record patterns provide a good example of an interesting feature of the PureScript type system: _row polymorphism_. Suppose we had defined `showPerson` without a type signature above. What would its inferred type have been? Interestingly, it is not the same as the type we gave:
 
 ```text
-> let showPerson { first = x, last = y } = y ++ ", " ++ x
+> let showPerson { first: x, last: y } = y ++ ", " ++ x
 
-> :t showPerson
+> :type showPerson
 forall r. { first :: String, last :: String | r } -> String
 ```
 
-What is the type variable `r` here? Well, if we try `showPerson` in `psci`, we see something interesting:
+What is the type variable `r` here? Well, if we try `showPerson` in PSCi, we see something interesting:
 
 ```text
 > showPerson { first: "Phil", last: "Freeman" }
@@ -206,7 +176,7 @@ We are able to append additional fields to the record, and the `showPerson` func
 ```text
 > showPerson { first: "Phil" }
 
-Object does not have property last
+Row lacks required property "last"
 ```
 
 We can read the new type signature of `showPerson` as "takes any record with `first` and `last` fields which are `Strings` _and any other fields_, and returns a `String`". 
@@ -219,7 +189,7 @@ Note that we could have also written
 > let showPerson p = p.last ++ ", " ++ p.first
 ```
 
-and `psci` would have inferred the same type.
+and PSCi would have inferred the same type.
 
 We will see row polymorphism again later, when we discuss _extensible effects_.
 
@@ -227,40 +197,38 @@ We will see row polymorphism again later, when we discuss _extensible effects_.
 
 Array patterns and record patterns both combine smaller patterns to build larger patterns. For the most part, the examples above have only used simple patterns inside array patterns and record patterns, but it is important to note that patterns can be arbitrarily _nested_, which allows functions to be defined using conditions on potentially complex data types.
 
-For example, this code combines record and array patterns to match an array of records:
+For example, this code combines two record patterns to match an array of records:
 
 ```haskell
-type Person = { height :: Number }
+type Address = { street :: String, city :: String }
 
-totalHeight :: [Person] -> Number
-totalHeight [] = 0
-totalHeight ({ height = h } : ps) = h + totalHeight ps
+type Person = { name :: String, address :: Address }
+
+livesInLA :: Person -> Boolean
+livesInLA { address: { city: "Los Angeles" } } = true
+livesInLA _ = false
 ```
 
 ## Named Patterns
 
 Patterns can be _named_ to bring additional names into scope when using nested patterns. Any pattern can be named by using the `@` symbol. 
 
-For example, the following code matches any array with one or more elements, but in addition to binding the head of the array to the name `x`, the value of the array itself is bound to the name `arr`:
+For example, this function sorts two-element arrays, naming the two elements, but also naming the array itself:
 
 ```haskell
-dup :: forall a. [a] -> [a]
-dup arr@(x : _) = x : arr
-dup [] = []
+sortPair :: Array Int -> Array Int
+sortPair arr@[x, y] 
+  | x <= y = arr
+  | otherwise = [y, x]
 ```
 
-The result is that `dup` duplicates the head element of a non-empty array:
-
-```text
-> dup [1, 2, 3]
-[1, 1, 2, 3]
-```
+This way, we save ourselves from allocating a new array if the pair is already sorted.
 
 X> ## Exercises
 X> 
-X> 1. (Easy) Write a function `getCity` which uses record patterns to find a person's city. A Person should be represented as a record which contains an `address` field of type `Address`, and `Address` should contain the `city` field.
-X> 1. (Medium) What is the most general type of the `getCity` function, taking into account row polymorphism? What about the `totalHeight` function defined above?
-X> 1. (Medium) Write a function `flatten` which uses only patterns and the concatenation (`++`) operator to flatten an array of arrays into a singly-nested array. _Hint_: the function should have type `forall a. [[a]] -> [a]`.
+X> 1. (Easy) Write a function `sameCity` which uses record patterns to test whether two `Person` records belong to the same city.
+X> 1. (Medium) What is the most general type of the `sameCity` function, taking into account row polymorphism? What about the `livesInLA` function defined above?
+X> 1. (Medium) Write a function `fromSingleton` which uses an array literal pattern to extract the sole member of a singleton array. If the array is not a singleton, your function should return a provided default value. Your function should have type `forall a. a -> Array a -> a`
 
 ## Case Expressions
 
@@ -269,11 +237,13 @@ Patterns do not only appear in top-level function declarations. It is possible t
 Here is an example. This function computes "longest zero suffix" of an array (the longest suffix which sums to zero):
 
 ```haskell
-lzs :: [Number] -> [Number]
+import Data.Array.Unsafe (tail)
+
+lzs :: Array Int -> Array Int
 lzs [] = []
-lzs xs@(_ : t) = case sum xs of
-  0 -> xs
-  _ -> lzs t
+lzs xs = case sum xs of
+           0 -> xs
+           _ -> lzs (tail xs)
 ```
 
 For example:
@@ -292,17 +262,17 @@ This function works by case analysis. If the array is empty, our only option is 
 
 If patterns in a case expression are tried in order, then what happens in the case when none of the patterns in a case alternatives match their inputs? In this case, the case expression will fail at runtime with a _pattern match failure_.
 
-We can see this behaviour with a simple example:
+We can see this behavior with a simple example:
 
 ```haskell
-patternFailure :: Number -> Number
-patternFailure 0 = 0
+partialFunction :: Boolean -> Boolean
+partialFunction true = true
 ```
 
-This function contains only a single case, which only matches a single input, zero. If we compile this file, and test in `psci` with any other argument, we will see an error at runtime:
+This function contains only a single case, which only matches a single input, `true`. If we compile this file, and test in PSCi with any other argument, we will see an error at runtime:
 
 ```text
-> patternFailure 10
+> partialFunction false
 
 Failed pattern match
 ```
@@ -311,12 +281,30 @@ Functions which return a value for any combination of inputs are called _total_ 
 
 It is generally considered better to define total functions where possible. If it is known that a function does not return a result for some valid set of inputs, it is usually better to return a value with type `Maybe a` for some `a`, using `Nothing` to indicate failure. This way, the presence or absence of a value can be indicated in a type-safe way.
 
-Here is the `patternFailure` function, rewritten to use `Maybe Number` as the return type:
+The PureScript compiler will generate a warning if it can detect that your function is not total due to an incomplete pattern match. Running the `partialFunction` example through `psc` will generate the following warning:
 
-```haskell
-patternFailure :: Number -> Maybe Number
-patternFailure 0 = Just 0
-patternFailure _ = Nothing
+```text
+Pattern could not be determined to cover all cases.
+The definition has the following uncovered cases:
+  false
+```
+
+This tells us that the value `false` is not matched by any pattern. In general, these warnings might include multiple unmatched cases.
+
+The compiler will also generate a warning in certain cases when it can detect that cases are _redundant_ (that is, a case only matches values which would have been matched by a prior case):
+
+```purescript
+redundantCase :: Boolean -> Boolean
+redundantCase true = true
+redundantCase true = false
+```
+
+In this case, the second case is correctly identified as redundant:
+
+```text
+Redundant cases have been detected.
+The definition has the following redundant cases:
+  true
 ```
 
 ## Algebraic Data Types
@@ -384,13 +372,16 @@ For example, the `Line` constructor defined above required two `Point`s, so to c
 
 ```haskell
 exampleLine :: Shape
-exampleLine = Line origin origin
+exampleLine = Line p1 p2
   where
-  origin :: Point
-  origin = Point { x: 0, y: 0 }
+  p1 :: Point
+  p1 = Point { x: 0, y: 0 }
+  
+  p2 :: Point
+  p2 = Point { x: 100, y: 50 }
 ```
 
-To construct the `origin`, we apply the `Point` constructor to its single argument, which is a record.
+To construct the points `p1` and `p2`, we apply the `Point` constructor to its single argument, which is a record.
 
 So, constructing values of algebraic data types is simple, but how do we use them? This is where the important connection with pattern matching appears: the only way to consume a value of an algebraic data type is to use a pattern to match its constructor.
 
@@ -405,7 +396,7 @@ showShape :: Shape -> String
 showShape (Circle c r)      = ...
 showShape (Rectangle c w h) = ...
 showShape (Line start end)  = ...
-showShape (Text loc text) = ...
+showShape (Circle loc text) = ...
 ```
 
 Each constructor can be used as a pattern, and the arguments to the constructor can themselves be bound using patterns of their own. Consider the first case of `showShape`: if the `Shape` matches the `Circle` constructor, then we bring the arguments of `Circle` (center and radius) into scope using two variable patterns, `c` and `r`. The other cases are similar.
@@ -414,8 +405,8 @@ Each constructor can be used as a pattern, and the arguments to the constructor 
 
 X> ## Exercises
 X> 
-X> 1. (Easy) Construct a value of type `Shape` which represents a circle centered at the origin with radius `10`.
-X> 1. (Medium) Write a function from `Shape`s to `Shape`s, which scales its argument by a factor of `2`, center the origin.
+X> 1. (Easy) Construct a value of type `Shape` which represents a circle centered at the origin with radius `10.0`.
+X> 1. (Medium) Write a function from `Shape`s to `Shape`s, which scales its argument by a factor of `2.0`, center the origin.
 X> 1. (Medium) Write a function which extracts the text from a `Shape`. It should return `Maybe String`, and use the `Nothing` constructor if the input is not constructed using `Text`.
 
 ## Newtypes
@@ -442,36 +433,27 @@ Let's use the data types we have defined above to create a simple library for us
 Define a type synonym for a `Picture` - just an array of `Shape`s:
 
 ```haskell
-type Picture = [Shape]
+type Picture = Array Shape
 ```
 
-For debugging purposes, we'll want to be able to render a `Picture` as a `String`. The following function, defined using pattern matching, lets us do that:
+For debugging purposes, we'll want to be able to turn a `Picture` into something readable. The `showPicture` function lets us do that:
 
 ```haskell
-showPicture :: Picture -> String
-showPicture picture = "[" ++ go picture ++ "]"
-  where
-  go :: Picture -> String
-  go [] = ""
-  go [x] = showShape x
-  go (x : xs) = showShape x ++ ", " ++ go xs
+showPicture :: Picture -> Array String
+showPicture = map showShape
 ``` 
 
-Notice how the recursion is handled using a helper function defined in a `where` block. The function `go` is not accessible to users of the module, only inside the function `showPicture`.
-
-`go` handles three cases: empty arrays, singleton arrays, and anything else. This approach avoids printing an extra comma character at the end of the string.
-
-Let's try it out. Compile your module with `grunt` and open `psci`:
+Let's try it out. Compile your module with `pulp build` and open PSCi with `pulp psci`:
 
 ```text
-$ grunt
-$ psci
+$ pulp build
+$ pulp psci
 
 > import Data.Picture
 
 > showPicture [Line (Point { x: 0, y: 0 }) (Point { x: 1, y: 1 })]
 
-"[Line [start: (0, 0), end: (1, 1)]]"
+["Line [start: (0.0, 0.0), end: (1.0, 1.0)]"]
 ```
 
 ## Computing Bounding Rectangles

@@ -16,9 +16,9 @@ Our running example will be a domain-specific language for creating HTML documen
 
 ## Project Setup
 
-The project accompanying this chapter adds one new Bower dependency - the `purescript-free` library, which defines the _free monad_, one of the tools which we will by using.
+The project accompanying this chapter adds one new Bower dependency - the `purescript-free` library, which defines the _free monad_, one of the tools which we will be using.
 
-The source code for this project can be built using Grunt.
+We will test this chapter's project in PSCi. You will need to either create a test module to paste code snippets, or use multi-line mode with the `-m` flag.
 
 ## A HTML Data Type
 
@@ -27,8 +27,8 @@ The most basic version of our HTML library is defined in the `Data.DOM.Simple` m
 ```haskell
 newtype Element = Element
   { name         :: String
-  , attribs      :: [Attribute]
-  , content      :: Maybe [Content]
+  , attribs      :: Array Attribute
+  , content      :: Maybe (Array Content)
   }
 
 data Content
@@ -49,13 +49,17 @@ The key function of our library is a function
 render :: Element -> String
 ```
 
-which renders HTML elements as HTML strings. We can try out this version of the library by constructing values of the appropriate types explicitly in `psci`:
+which renders HTML elements as HTML strings. We can try out this version of the library by constructing values of the appropriate types explicitly in PSCi:
 
 ```text
+$ pulp psci -m
+
+> import Prelude
 > import Data.DOM.Simple
 > import Data.Maybe
+> import Control.Monad.Eff.Console
 
-> render $ Element 
+> log $ render $ Element 
     { name: "p"
     , attribs: [
         Attribute 
@@ -68,7 +72,8 @@ which renders HTML elements as HTML strings. We can try out this version of the 
       ] 
     }
   
-"<p class=\"main\">Hello World!</p>"
+<p class="main">Hello World!</p>
+unit
 ```
 
 As it stands, there are several problems with this library:
@@ -88,7 +93,7 @@ The first technique we will apply is simple but can be very effective. Instead o
 Here is an example. First, we provide a convenience function for creating HTML elements:
 
 ```haskell
-element :: String -> [Attribute] -> Maybe [Content] -> Element
+element :: String -> Array Attribute -> Maybe (Array Content) -> Element
 element name attribs content = Element
   { name:      name
   , attribs:   attribs
@@ -99,16 +104,13 @@ element name attribs content = Element
 Next, we create smart constructors for those HTML elements we want our users to be able to create, by applying the `element` function:
 
 ```haskell
-a :: [Attribute] -> [Content] -> Element
+a :: Array Attribute -> Array Content -> Element
 a attribs content = element "a" attribs (Just content)
 
-div :: [Attribute] -> [Content] -> Element
-div attribs content = element "div" attribs (Just content)
-
-p :: [Attribute] -> [Content] -> Element
+p :: Array Attribute -> Array Content -> Element
 p attribs content = element "p" attribs (Just content)
 
-img :: [Attribute] -> Element
+img :: Array Attribute -> Element
 img attribs = element "img" attribs Nothing
 ```
 
@@ -121,7 +123,6 @@ module Data.DOM.Smart
   , Content(..)
 
   , a
-  , div
   , p
   , img
 
@@ -209,7 +210,6 @@ module Data.DOM.Smart
   , AttributeKey()
 
   , a
-  , div
   , p
   , img
 
@@ -227,13 +227,18 @@ module Data.DOM.Smart
   ) where
 ```
 
-If we try this new module in `psci`, we can already see massive improvements in the conciseness of the user code:
+If we try this new module in PSCi, we can already see massive improvements in the conciseness of the user code:
 
 ```text
+$ pulp psci
+
+> import Prelude
 > import Data.DOM.Smart
-> render $ p [ _class := "main" ] [ text "Hello World!" ]
+> import Control.Monad.Eff.Console
+> log $ render $ p [ _class := "main" ] [ text "Hello World!" ]
   
-"<p class=\"main\">Hello World!</p>"
+<p class="main">Hello World!</p>
+unit
 ```
 
 Note, however, that no changes had to be made to the `render` function, because the underlying data representation never changed. This is one of the benefits of the smart constructors approach - it allows us to separate the internal data representation for a module from the representation which is perceived by users of its external API.
@@ -254,13 +259,14 @@ X>     Modify the representation of an `Attribute` to take empty attributes into
 To motivate the next technique, consider the following code:
 
 ```text
-> import Data.DOM.Phantom
-> render $ img [ src    := "cat.jpg"
-               , width  := "foo"
-               , height := "bar" 
-               ]
+> log $ render $ img 
+    [ src    := "cat.jpg"
+    , width  := "foo"
+    , height := "bar" 
+    ]
   
-"<img src=\"cat.jpg\" width=\"foo\" height=\"bar\" />"
+<img src="cat.jpg" width="foo" height="bar" />
+unit
 ```
 
 The problem here is that we have provided string values for the `width` and `height` attributes, where we should only be allowed to provide numeric values in units of pixels or percentage points.
@@ -324,13 +330,18 @@ height = AttributeKey "height"
 Now we find it is impossible to represent these invalid HTML documents, and we are forced to use numbers to represent the `width` and `height` attributes instead:
 
 ```text
+> import Prelude
 > import Data.DOM.Phantom
-> render $ img [ src    := "cat.jpg"
-               , width  := 100
-               , height := 200 
-               ]
+> import Control.Monad.Eff.Console
+
+> log $ render $ img 
+    [ src    := "cat.jpg"
+    , width  := 100
+    , height := 200 
+    ]
   
-"<img src=\"cat.jpg\" width=\"100\" height=\"200\" />"
+<img src="cat.jpg" width="100" height="200" />
+unit
 ```
 
 X> ## Exercises
@@ -374,11 +385,11 @@ p [ _class := "main" ] $ do
 
 However, do notation is not the only benefit of a free monad. The free monad allows us to separate the _representation_ of our monadic actions from their _interpretation_, and even support _multiple interpretations_ of the same actions.
 
-The `Free` monad is defined in the `purescript-free` library, in the `Control.Monad.Free` module. We can find out some basic information about it using `psci`, as follows:
+The `Free` monad is defined in the `purescript-free` library, in the `Control.Monad.Free` module. We can find out some basic information about it using PSCi, as follows:
 
 ```text
 > import Control.Monad.Free
-> :k Free
+> :kind Free
 (* -> *) -> * -> *
 ```
 
@@ -392,47 +403,28 @@ data ContentF a
   | ElementContent Element a
 
 instance functorContentF :: Functor ContentF where
-  (<$>) f (TextContent s a) = TextContent s (f a)
-  (<$>) f (ElementContent e a) = ElementContent e (f a)
+  map f (TextContent s a) = TextContent s (f a)
+  map f (ElementContent e a) = ElementContent e (f a)
 ```
 
 Here, the `ContentF` type constructor looks just like our old `Content` data type - however, it now takes a type argument `a`, and each data constructor has been modified to take a value of type `a` as an additional argument. The `Functor` instance simply applies the function `f` to the component of type `a` in each data constructor.
 
-With that, we can define our new `Content` type constructor as a newtype around the `Free` monad, which we construct by using our `ContentF` type constructor as the first type argument:
+With that, we can define our new `Content` monad as a type synonym for the `Free` monad, which we construct by using our `ContentF` type constructor as the first type argument:
 
 ```haskell
-newtype Content a = Content (Free ContentF a)
+type Content = Free ContentF
 ```
 
-Here, we use a newtype to avoid exposing the internal representation of our library to our users - by hiding the `Content` data constructor, we restrict our users to only using the monadic actions we provide.
+Instead of a type synonym, we might use a `newtype` to avoid exposing the internal representation of our library to our users - by hiding the `Content` data constructor, we restrict our users to only using the monadic actions we provide.
 
-Because `ContentF` is a `Functor`, we automatically get a `Monad` instance for `Free ContentF`, and we can lift this instance to a `Monad` instance on `Content`:
-
-```haskell
-runContent :: forall a. Content a -> Free ContentF a
-runContent (Content x) = x
-
-instance functorContent :: Functor Content where
-  (<$>) f (Content x) = Content (f <$> x)
-
-instance applyContent :: Apply Content where
-  (<*>) (Content f) (Content x) = Content (f <*> x)
-
-instance applicativeContent :: Applicative Content where
-  pure = Content <<< pure
-
-instance bindContent :: Bind Content where
-  (>>=) (Content x) f = Content (x >>= (runContent <<< f))
-
-instance monadContent :: Monad Content
-```
+Because `ContentF` is a `Functor`, we automatically get a `Monad` instance for `Free ContentF`.
 
 We have to modify our `Element` data type slightly to take account of the new type argument on `Content`. We will simply require that the return type of our monadic computations be `Unit`:
 
 ```haskell
 newtype Element = Element
   { name         :: String
-  , attribs      :: [Attribute]
+  , attribs      :: Array Attribute
   , content      :: Maybe (Content Unit)
   }
 ```
@@ -460,23 +452,20 @@ Some other routine modifications have to be made, but the interesting changes ar
 The `Control.Monad.Free` module provides a number of functions for interpreting a computation in a free monad:
 
 ```haskell
-go :: forall f a. (Functor f) => 
+runFree :: forall f a. (Functor f) => 
   (f (Free f a) -> Free f a) -> 
   Free f a -> 
   a
   
-goM :: forall f m a. (Functor f, Monad m) => 
+runFreeM :: forall f m a. (Functor f, MonadRec m) => 
   (f (Free f a) -> m (Free f a)) -> 
-  Free f a -> 
-  m a
-  
-iterM :: forall f m a. (Functor f, Monad m) => 
-  (forall a. f (m a) -> m a) -> 
   Free f a -> 
   m a
 ```
 
-The `go` function is useful when you want to use the free monad to compute a _pure_ result. The `goM` and `iterM` functions allow us to use a monad to interpret the actions of our free monad. The two functions differ slightly in the type of their interpretation functions, but we will use the `iterM` function. The interested reader might like to try reimplementing our code using the `goM` function instead.
+The `runFree` function is used to compute a _pure_ result. The `runFreeM` function allows us to use a monad to interpret the actions of our free monad. 
+
+_Note_: Technically, we are restricted to using monads `m` which satisfy the stronger `MonadRec` constraint. In practice, this means that we don't need to worry about stack overflow, since `m` supports safe _monadic tail recursion_.
 
 First, we have to choose a monad in which we can interpret our actions. We will use the `Writer String` monad to accumulate a HTML string as our result.
 
@@ -518,23 +507,23 @@ Next, we define the `renderAttribute` function, which is equally simple:
       tell "\""
 ```
 
-The `renderContent` function is more interesting. Here, we use the `iterM` function to interpret the computation inside the free monad, delegating to a helper function, `renderContentItem`:
+The `renderContent` function is more interesting. Here, we use the `runFreeM` function to interpret the computation inside the free monad, delegating to a helper function, `renderContentItem`:
 
 ```haskell
     renderContent :: Maybe (Content Unit) -> Writer String Unit
     renderContent Nothing = tell " />"
     renderContent (Just (Content content)) = do
       tell ">"
-      iterM renderContentItem content
+      runFreeM renderContentItem content
       tell "</"
       tell e.name
       tell ">"
 ```
 
-The type of `renderContentItem` can be deduced from the type signature of `iterM`. The functor `f` is our type constructor `ContentF`, and the monad `m` is the monad in which we are interpreting the computation, namely `Writer String`. This gives the following type signature for `renderContentItem`:
+The type of `renderContentItem` can be deduced from the type signature of `runFreeM`. The functor `f` is our type constructor `ContentF`, and the monad `m` is the monad in which we are interpreting the computation, namely `Writer String`. This gives the following type signature for `renderContentItem`:
 
 ```haskell
-    renderContentItem :: forall a. ContentF (Writer String a) -> Writer String a
+    renderContentItem :: ContentF (Content Unit) -> Writer String (Content Unit)
 ```
 
 We can implement this function by simply pattern matching on the two data constructors of `ContentF`:
@@ -542,29 +531,32 @@ We can implement this function by simply pattern matching on the two data constr
 ```haskell
     renderContentItem (TextContent s rest) = do
       tell s
-      rest
+      return rest
     renderContentItem (ElementContent e rest) = do
       renderElement e
-      rest
+      return rest
 ```
 
-In each case, the expression `rest` has the type `Writer String a`, and represents the remainder of the interpreted computation. We can complete each case by calling the `rest` action.
+In each case, the expression `rest` has the type `Content Unit`, and represents the remainder of the interpreted computation. We can complete each case by returning the `rest` action.
 
-That's it! We can test our new monadic API in `psci`, as follows:
+That's it! We can test our new monadic API in PSCi, as follows:
 
 ```text
+> import Prelude
 > import Data.DOM.Free
-> render $ p [] $ do
+> import Control.Monad.Eff.Console
+
+> log $ render $ p [] $ do
     elem $ img [ src := "cat.jpg" ]
     text "A cat"
   
-"<p><img src=\"cat.jpg\" />A cat</p>"
+<p><img src="cat.jpg" />A cat</p>
+unit
 ```
 
 X> ## Exercises
 X> 
-X> 1. (Medium) Add a new data constructor to the `ContentF` type to support a new action `comment`, which renders a comment in the generated HTML. Implement the new action using `liftF`. Update the interpretation `renderContentItem` to interpret your new constructor appropriately.
-X> 1. (Difficult) One problem with the `goM` and `iterM` functions is that they are not _stack-safe_ - large monadic actions can result in stack overflows when interpreted. However, the `Control.Monad.Free` library provides the `go` and `goEff` functions which are stack-safe. Use the `goEff` function to interpret the `Content` monad by using the `ST` effect in place of the `Writer` monad. 
+X> 1. (Medium) Add a new data constructor to the `ContentF` type to support a new action `comment`, which renders a comment in the generated HTML. Implement the new action using `liftF`. Update the interpretation `renderContentItem` to interpret your new constructor appropriately. 
 
 ## Extending the Language
 
@@ -628,15 +620,15 @@ data ContentF a
   | NewName (Name -> a)
 ```
 
-The `NewName` data constructor corresponds to an action which returns a value of type `Name`. Notice that instead of requiring a `Name` as a data constructor argument, we require the user to provide a _function_ of type `Name -> a`. Remembering that the type `a` represents the _rest of the computation_, we can build an intuition that this function provides a way to continue computation after a value of type `Name` has been returned.
+The `NewName` data constructor corresponds to an action which returns a value of type `Name`. Notice that instead of requiring a `Name` as a data constructor argument, we require the user to provide a _function_ of type `Name -> a`. Remembering that the type `a` represents the _rest of the computation_, we can see that this function provides a way to continue computation after a value of type `Name` has been returned.
 
 We also need to update the `Functor` instance for `ContentF`, taking into account the new data constructor, as follows:
 
 ```haskell
 instance functorContentF :: Functor ContentF where
-  (<$>) f (TextContent s a) = TextContent s (f a)
-  (<$>) f (ElementContent e a) = ElementContent e (f a)
-  (<$>) f (NewName k) = NewName (f <<< k)
+  map f (TextContent s a) = TextContent s (f a)
+  map f (ElementContent e a) = ElementContent e (f a)
+  map f (NewName k) = NewName (f <<< k)
 ```
 
 Now we can build our new action by using the `liftF` function, as before:
@@ -648,22 +640,20 @@ newName = Content $ liftF $ NewName id
 
 Notice that we provide the `id` function as our continuation, meaning that we return the result of type `Name` unchanged.
 
-Finally, we need to update our interpretation function, to interpret the new action. We previously used the `Writer String` monad to interpret our computations, but that monad does not have the ability to generate new names, so we must switch to something else. The `RWS` monad can provide the capabilities of the `Writer`, but also enables pure state. We can define our interpretation monad as a type synonym to keep our type signatures short:
+Finally, we need to update our interpretation function, to interpret the new action. We previously used the `Writer String` monad to interpret our computations, but that monad does not have the ability to generate new names, so we must switch to something else. The `WriterT` monad transformer can be used with the `State` monad to combine the effects we need. We can define our interpretation monad as a type synonym to keep our type signatures short:
 
 ```haskell
-type Interp = RWS Unit String Number
+type Interp = WriterT String (State Int)
 ```
 
-Remember that the `RWS` monad takes three type arguments: the first is the global configuration, which in our case is the trivial `Unit` type; the second is the type of the "log", which in our case is the HTML string we are accumulating; the final argument is the state type, and in our case we will use a number which will act as an incrementing counter, used to generate unique names.
+Here, the state of type `Int` will act as an incrementing counter, used to generate unique names.
 
-Because the `Writer` and `RWS` monads use the same type class members to abstract their actions, we do not need to change any actions - we only need to replace every reference to `Writer String` with `Interp`. We do, however, need to modify the handler used to run our computation. Instead of `execWriter`, we now need to use `evalRWS`:
+Because the `Writer` and `WriterT` monads use the same type class members to abstract their actions, we do not need to change any actions - we only need to replace every reference to `Writer String` with `Interp`. We do, however, need to modify the handler used to run our computation. Instead of just `execWriter`, we now need to use `evalState` as well:
 
 ```haskell
 render :: Element -> String
-render e = snd $ evalRWS (renderElement e) unit 0
+render e = evalState (execWriterT (renderElement e)) 0
 ```
-
-The call to `snd` makes sure that we only return the _second component_ of the `Tuple` returned from `evalRWS`, which in this case represents the accumulated HTML string.
 
 We also need to add a new case to `renderContentItem`, to interpret the new `NewName` data constructor:
 
@@ -672,23 +662,27 @@ We also need to add a new case to `renderContentItem`, to interpret the new `New
       n <- get
       let name = Name $ "name" ++ show n
       put $ n + 1
-      k name
+      return (k name)
 ```
 
-Here, we are given a continuation `k` of type `Name -> Interp a`, and we need to construct an interpretation of type `Interp a`. Our interpretation is simple: we use `get` to read the state, and use that state to generate a unique name, then use `put` to increment the state. Finally, we pass our new name to the continuation to complete the computation.
+Here, we are given a continuation `k` of type `Name -> Content a`, and we need to construct an interpretation of type `Content a`. Our interpretation is simple: we use `get` to read the state, use that state to generate a unique name, then use `put` to increment the state. Finally, we pass our new name to the continuation to complete the computation.
 
-With that, we can try out our new functionality in `psci`, by generating a unique name inside the `Content` monad, and using it as both the name of an element and the target of a hyperlink:
+With that, we can try out our new functionality in PSCi, by generating a unique name inside the `Content` monad, and using it as both the name of an element and the target of a hyperlink:
 
 ```text
+> import Prelude
 > import Data.DOM.Name
+> import Control.Monad.Eff.Console
+
 > render $ p [ ] $ do
     top <- newName
     elem $ a [ name := top ] $ 
       text "Top"
-    elem $ a [ href := AnchorHref top1 ] $ 
+    elem $ a [ href := AnchorHref top ] $ 
       text "Back to top"
   
-"<p><a name=\"name0\">Top</a><a href=\"#name0\">Back to top</a></p>"
+<p><a name="name0">Top</a><a href="#name0">Back to top</a></p>
+unit
 ```
 
 You can verify that multiple calls to `newName` do in fact result in unique names.
@@ -698,7 +692,9 @@ X>
 X> 1. (Medium) We can simplify the API further by hiding the `Element` type from its users. Make these changes in the following steps:
 X>     
 X>     - Combine functions like `p` and `img` (with return type `Element`) with the `elem` action to create new actions with return type `Content Unit`. 
-X>     - Change the `render` function to accept an argument of type `Content a` and return a result of type `Tuple a String`.
+X>     - Change the `render` function to accept an argument of type `Content Unit` instead of `Element`.
+X> 1. (Medium) Hide the implementation of the `Content` monad by using a `newtype` instead of a type synonym. You should not export the data
+X>     constructor for your `newtype`.
 X> 1. (Difficult) Modify the `ContentF` type to support a new action
 X> 
 X>     ```haskell
@@ -707,7 +703,7 @@ X>     ```
 X> 
 X>     which returns a boolean value indicating whether or not the document is being rendered for display on a mobile device.
 X> 
-X>     _Hint_: use the `ask` action and the `Reader` component of the `RWS` monad to interpret this action.
+X>     _Hint_: use the `ask` action and the `ReaderT` monad transformer to interpret this action.
 
 ## Conclusion
 
@@ -716,7 +712,7 @@ In this chapter, we developed a domain-specific language for creating HTML docum
 - We used _smart constructors_ to hide the details of our data representation, only permitting the user to create documents which were _correct-by-construction_.
 - We used an _user-defined infix binary operator_ to improve the syntax of the language.
 - We used _phantom types_ to encode additional information in the types of our data, preventing the user from providing attribute values of the wrong type.
-- We used the _free monad_ to turn our array representation of a collection of content into a monadic representation supporting do notation. We then extended this representation to support a new monadic action, and interpreted the monadic computations in the `Writer` and `RWS` monads.
+- We used the _free monad_ to turn our array representation of a collection of content into a monadic representation supporting do notation. We then extended this representation to support a new monadic action, and interpreted the monadic computations using standard monad transformers.
 
 These techniques all leverage PureScript's module and type systems, either to prevent the user from making mistakes or to improve the syntax of the domain-specific language.
 

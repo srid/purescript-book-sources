@@ -16,6 +16,8 @@ The code is broken into three modules:
 - `Data.AddressBook.UI` which provides functions to render the user interface in the browser.
 - `Control.Monad.Eff.DOM` which provides a simple library of functions for working with the DOM.
 
+The project adds the `purescript-eff` package as a Bower dependency. `purescript-eff` defines the `Eff` monad, which will be the subject of the second half of the chapter.
+
 To run this project, build with Grunt, and open the `html/index.html` file in your web browser.
 
 ## Monads and Do Notation
@@ -26,19 +28,24 @@ Consider the following example. Suppose we throw two dice and want to count the 
 
 - _Choose_ the value `x` of the first throw.
 - _Choose_ the value `y` of the second throw. 
-- If the sum of `x` and `y` is `n` then return the pair `{x, y}`, else fail.
+- If the sum of `x` and `y` is `n` then return the pair `[x, y]`, else fail.
 
 Array comprehensions allow us to write this non-deterministic algorithm in a natural way:
 
 ```haskell
-countThrows :: Number -> [[Number]]
+import Prelude
+import Data.Array
+
+countThrows :: Int -> Array (Array Int)
 countThrows n = do
-  x <- range 1 6
-  y <- range 1 6
-  if x + y == n then return [x, y] else empty
+  x <- 1 .. 6
+  y <- 1 .. 6
+  if x + y == n 
+    then return [x, y] 
+    else empty
 ```
 
-We can see that this function works in `psci`:
+We can see that this function works in PSCi:
 
 ```text
 > countThrows 10
@@ -50,7 +57,7 @@ We can see that this function works in `psci`:
 
 In the last chapter, we formed an intuition for the `Maybe` applicative functor, embedding PureScript functions into a larger programming language supporting _optional values_. In the same way, we can form an intuition for the _array monad_, embedding PureScript functions into a larger programming language supporting _non-deterministic choice_.
 
-In general, a monad for some type constructor `m` provides a way to use do notation with values of type `m a`. Note that in the array comprehension above, every line contains a computation of type `[a]` for some type `a`. In general, every line of a do notation block will contain a computation of type `m a` for some type `a` and our monad `m`. The monad `m` must be the same on every line (i.e. we fix the side-effect), but the types `a` can differ (i.e. individual computations can have different result types).
+In general, a _monad_ for some type constructor `m` provides a way to use do notation with values of type `m a`. Note that in the array comprehension above, every line contains a computation of type `Array a` for some type `a`. In general, every line of a do notation block will contain a computation of type `m a` for some type `a` and our monad `m`. The monad `m` must be the same on every line (i.e. we fix the side-effect), but the types `a` can differ (i.e. individual computations can have different result types).
 
 Here is another example of do notation, this type applied to the type constructor `Maybe`. Suppose we have some type `XML` representing XML nodes, and an operator 
 
@@ -81,18 +88,20 @@ The `Monad` type class is defined as follows:
 
 ```haskell
 class (Apply m) <= Bind m where
-  (>>=) :: forall a b. m a -> (a -> m b) -> m b
+  bind :: forall a b. m a -> (a -> m b) -> m b
 
 class (Applicative m, Bind m) <= Monad m
 ```
 
-The key function here is the operator `>>=`, which we call "bind", defined in the `Bind` type class. The `Monad` type class extends `Bind` with the operations of the `Applicative` type class that we have already seen.
+The key function here is `bind`, defined in the `Bind` type class. Just like for the `<$>` and `<*>` operators in the `Functor` and `Apply` type classes, the Prelude defines an infix alias `>>=` for the `bind` function.
+
+The `Monad` type class extends `Bind` with the operations of the `Applicative` type class that we have already seen.
 
 It will be useful to see some examples of the `Bind` type class. A sensible definition for `Bind` on arrays can be given as follows:
 
 ```haskell
-instance bindArray :: Bind [] where
-  (>>=) xs f = f `concatMap` xs
+instance bindArray :: Bind Array where
+  bind xs f = concatMap f xs
 ```
 
 This explains the connection between array comprehensions and the `concatMap` function that has been alluded to before.
@@ -101,14 +110,13 @@ Here is an implementation of `Bind` for the `Maybe` type constructor:
 
 ```haskell
 instance bindMaybe :: Bind Maybe where
-  (>>=) Nothing  _ = Nothing
-  (>>=) (Just a) f = f a
+  bind Nothing  _ = Nothing
+  bind (Just a) f = f a
 ```
 
 This definition solidifies the intuition that missing values are propagated through a do notation block.
 
 Let's see how the `Bind` type class is related to do notation. Consider a simple do notation block which starts by binding a value from the result of some computation:
-
 
 ```haskell
 do value <- someComputation
@@ -116,6 +124,12 @@ do value <- someComputation
 ```
 
 Every time the PureScript compiler sees this pattern, it replaces the code with this:
+
+```haskell
+bind someComputation \value -> whatToDoNext
+```
+
+or, written infix:
 
 ```haskell
 someComputation >>= \value -> whatToDoNext
@@ -191,7 +205,7 @@ In `c2`, all three expressions `m1`, `m2` and `m3` appear in the same do notatio
 
 The associativity law tells us that it is safe to simplify nested do notation blocks in this way.
 
-_Note_ that by the definition of how do notation gets desugared into calls to `>>=`, both of `c1` and `c2` are also equivalent to this code:
+_Note_ that by the definition of how do notation gets desugared into calls to `bind`, both of `c1` and `c2` are also equivalent to this code:
 
 ```haskell  
 c3 = do 
@@ -208,62 +222,63 @@ As an example of working with monads abstractly, this section will present a fun
 The function we will write is called `foldM`. It generalizes the `foldl` function that we met earlier to a monadic context. Here is its type signature:
 
 ```haskell
-foldM :: forall m a b. (Monad m) => (a -> b -> m a) -> a -> [b] -> m a 
+foldM :: forall m a b. (Monad m) => (a -> b -> m a) -> a -> List b -> m a 
 ```
 
 Notice that this is the same as the type of `foldl`, except for the appearance of the monad `m`:
 
 ```haskell
-foldl :: forall a b. (a -> b -> a) -> a -> [b] -> a
+foldl :: forall a b. (a -> b -> a) -> a -> List b -> a
 ```
 
-Intuitively, `foldM` performs a fold over an array in some context supporting some set of side-effects. 
+Intuitively, `foldM` performs a fold over a list in some context supporting some set of side-effects. 
 
 For example, if we picked `m` to be `Maybe`, then our fold would be allowed to fail by returning `Nothing` at any stage - every step returns an optional result, and the result of the fold is therefore also optional.
 
-If we picked `m` to be the array type constructor `[]`, then every step of the fold would be allowed to return multiple results, and the fold continue onto the next step once for each result. At the end, the set of results would consist of all folds over all possible paths. This corresponds to a traversal of a graph!
+If we picked `m` to be the `Array` type constructor, then every step of the fold would be allowed to return zero or more results, and the fold would proceed to the next step independently for each result. At the end, the set of results would consist of all folds over all possible paths. This corresponds to a traversal of a graph!
 
-To write `foldM`, we can simply break the input array into cases.
+To write `foldM`, we can simply break the input list into cases.
 
-If the array is empty, then to produce the result of type `a`, we only have one option: we have to return the second argument:
+If the list is empty, then to produce the result of type `a`, we only have one option: we have to return the second argument:
 
 ```haskell
-foldM _ a [] = return a
+foldM _ a Nil = return a
 ```
 
 Note that we have to use `return` to lift `a` into the monad `m`.
 
-What if the array is non-empty? In that case, we have a value of type `a`, a value of type `b`, and a function of type `a -> b -> m a`. If we apply the function, we obtain a monadic result of type `m a`. We can bind the result of this computation with a backwards arrow `<-`.
+What if the list is non-empty? In that case, we have a value of type `a`, a value of type `b`, and a function of type `a -> b -> m a`. If we apply the function, we obtain a monadic result of type `m a`. We can bind the result of this computation with a backwards arrow `<-`.
 
-It only remains to recurse on the tail of the array. The implementation is simple:
+It only remains to recurse on the tail of the list. The implementation is simple:
 
 ```haskell
-foldM f a (b : bs) = do
+foldM f a (Cons b bs) = do
   a' <- f a b
   foldM f a' bs
 ```
 
-Note that this implementation is almost identical to that of `foldl` on arrays, with the exception of do notation.
+Note that this implementation is almost identical to that of `foldl` on lists, with the exception of do notation.
 
-We can define and test this function in `psci`. Here is an example - suppose we defined a "safe division" function on integers, which tested for divisibility and used the `Maybe` type constructor to indicate failure:
+We can define and test this function in PSCi. Here is an example - suppose we defined a "safe division" function on integers, which tested for division by zero and used the `Maybe` type constructor to indicate failure:
 
 ```haskell
-safeDivide :: Number -> Number -> Maybe Number
-safeDivide a b | a % b == 0 = Just (a / b)
-safeDivide _ _ = Nothing
+safeDivide :: Int -> Int -> Maybe Int
+safeDivide _ 0 = Nothing
+safeDivide a b = Just (a / b)
 ```
   
 Then we can use `foldM` to express iterated safe division:  
   
 ```text
-> foldM safeDivide 100 [5, 2, 2]
+> import Data.List
+> foldM safeDivide 100 (toList [5, 2, 2])
 Just (5)
 
-> foldM safeDivide 100 [2, 3, 4]
+> foldM safeDivide 100 (toList [2, 0, 4])
 Nothing
 ```
 
-The `foldM safeDivide` function returns `Nothing` if a non-integer division was attempted at any point. Otherwise it returns the result of repeatedly dividing the accumulator, wrapped in the `Just` constructor.
+The `foldM safeDivide` function returns `Nothing` if a division by zero was attempted at any point. Otherwise it returns the result of repeatedly dividing the accumulator, wrapped in the `Just` constructor.
 
 ## Monads and Applicatives
 
@@ -279,11 +294,11 @@ ap mf ma = do
   return (f a)
 ```
 
-If `m` is a law-abiding member of the `Monad` type class, then there is a valid `Applicative` instance for which `pure` is given by `return`, and `<*>` is given by `ap`.
+If `m` is a law-abiding member of the `Monad` type class, then there is a valid `Applicative` instance for which `pure` is given by `return`, and `apply` is given by `ap`.
 
-The interested reader can check that `ap` agrees with `<*>` for the monads we have already encountered: `[]`, `Maybe`, `Either e` and `V e`.
+The interested reader can check that `ap` agrees with `apply` for the monads we have already encountered: `Array`, `Maybe`, `Either e` and `V e`.
 
-If every monad is also an applicative functor, then we should be able to apply our intuition for applicative functors to every monad. In particular, we can reasonably expect a monad to correspond, in some sense, to programming "in a larger language" augmented with some set of additional side-effects. We should be able to lift functions of arbitrary arities, using `<$>` and `<*>`, into this new language.
+If every monad is also an applicative functor, then we should be able to apply our intuition for applicative functors to every monad. In particular, we can reasonably expect a monad to correspond, in some sense, to programming "in a larger language" augmented with some set of additional side-effects. We should be able to lift functions of arbitrary arities, using `map` and `apply`, into this new language.
 
 But monads allow us to do more than we could do with just applicative functors, and the key difference is highlighted by the syntax of do notation. Consider the `userCity` example again, in which we looked for a user's city in an XML document which encoded their user profile:
 
@@ -298,7 +313,7 @@ userCity root = do
 
 Do notation allows the second computation to depend on the result `prof` of the first, and the third computation to depend on the result `addr` of the second, and so on. This dependence on previous values is not possible using only the interface of the `Applicative` type class.
 
-Try writing `userCity` using only `pure` and `<*>`: you will see that it is impossible. Applicatives only allow us to lift function arguments which are independent of each other, but monads allow us to write computations which involve more interesting data dependencies.
+Try writing `userCity` using only `pure` and `apply`: you will see that it is impossible. Applicatives only allow us to lift function arguments which are independent of each other, but monads allow us to write computations which involve more interesting data dependencies.
 
 In the last chapter, we saw that the `Applicative` type class can be used to express parallelism. This was precisely because the function arguments being lifted were independent of one another. Since the `Monad` type class allows computations to depend on the results of previous computations, the same does not apply - a monad has to combine its side-effects in sequence.
 
@@ -315,20 +330,20 @@ X>     > sums [1, 2, 10]
 X>     [0,1,2,3,10,11,12,13]
 X>     ```
 X> 
-X>     _Hint_: This can be achieved as a one-liner using `foldM`. You might want to use the `nub` and `sort` functions to remove duplicates and sort the result respectively.
-X> 1. (Medium) Confirm that the `ap` function and the `<*>` operator agree for the `Maybe` type constructor.
+X>     _Hint_: This function can be written as a one-liner using `foldM`. You might want to use the `nub` and `sort` functions to remove duplicates and sort the result respectively.
+X> 1. (Medium) Confirm that the `ap` function and the `apply` operator agree for the `Maybe` monad.
 X> 1. (Medium) Verify that the monad laws hold for the `Monad` instance for the `Maybe` type, as defined in the `purescript-maybe` package. 
-X> 1. (Medium) Write a function `filterM` which generalizes the `filter` function on arrays. Your function should have the following type signature:
+X> 1. (Medium) Write a function `filterM` which generalizes the `filter` function on lists. Your function should have the following type signature:
 X> 
 X>     ```haskell
-X>     filterM :: forall m a. (Monad m) => (a -> m Boolean) -> [a] -> m [a]
+X>     filterM :: forall m a. (Monad m) => (a -> m Boolean) -> List a -> m (List a)
 X>     ```
 X> 
-X>     Test your function in `psci` using the `Maybe` and `[]` monads.
+X>     Test your function in PSCi using the `Maybe` and `Array` monads.
 X> 1. (Difficult) Every monad has a default `Functor` instance given by:
 X> 
 X>     ```haskell
-X>     (<$>) f a = do
+X>     map f a = do
 X>       x <- a
 X>       return (f a)
 X>     ```
@@ -384,7 +399,7 @@ Values with side-effects have different types from pure values. As such, it is n
 
 The only way in which side-effects managed by the `Eff` monad will be presented is to run a computation of type `Eff eff a` from JavaScript.
 
-The PureScript compiler provides a shortcut, in the form of the `--main` compiler option, which generates additional JavaScript to invoke the `main` computation when the application starts. `main` is required to be a computation in the `Eff` monad.
+The Pulp build tool (and other tools) provide a shortcut, by generating additional JavaScript to invoke the `main` computation when the application starts. `main` is required to be a computation in the `Eff` monad.
 
 In this way, we know exactly what side-effects to expect: exactly those used by `main`. In addition, we can use the `Eff` monad to restrict what types of side-effects `main` is allowed to have, so that we can say with certainty for example, that our application will interact with the console, but nothing else.
 
@@ -392,39 +407,40 @@ In this way, we know exactly what side-effects to expect: exactly those used by 
 
 The goal of the `Eff` monad is to provide a well-typed API for computations with side-effects, while at the same time generating efficient Javascript. It is also called the monad of _extensible effects_, which will be explained shortly.
 
-Here is an example. It uses the `purescript-random` module which defines functions for generating random numbers:
+Here is an example. It uses the `purescript-random` package, which defines functions for generating random numbers:
 
 ```haskell
 module Main where
 
+import Prelude
+
 import Control.Monad.Eff
 import Control.Monad.Eff.Random
-
-import Debug.Trace
+import Control.Monad.Eff.Console
 
 main = do
   n <- random
   print n
 ```  
   
-If this file is saved as `Main.purs`, then it can be compiled using the following command:
+If this file is saved as `src/Main.purs`, then it can be compiled and run using Pulp:
 
 ```text
-psc --main Main Main.purs
+$ pulp run
 ```
 
-If the compiled JavaScript were run, you would see a randomly chosen number between `0` and `1` printed to the console.
+Running this command, you will see a randomly chosen number between `0` and `1` printed to the console.
 
 This program uses do notation to combine two types of native effects provided by the Javascript runtime: random number generation and console IO.
 
 ## Extensible Effects
 
-We can inspect the type of main by opening the module in `psci`:
+We can inspect the type of main by opening the module in PSCi:
 
 ```text
-> :t Main.main
+> :type Main.main
 
-forall eff. Eff (trace :: Trace, random :: Random | eff) Unit
+forall eff. Eff (console :: CONSOLE, random :: RANDOM | eff) Unit
 ```
 
 This type looks quite complicated, but is easily explained by analogy with PureScript’s records.
@@ -435,7 +451,7 @@ Consider a simple function which uses a record type:
 fullName person = person.firstName ++ " " ++ person.lastName
 ```
 
-This function creates a full name string from a record containing `firstName` and `lastName` properties. If you find the type of this function in `psci` as before, you will see this:
+This function creates a full name string from a record containing `firstName` and `lastName` properties. If you find the type of this function in PSCi as before, you will see this:
 
 ```haskell
 forall r. { firstName :: String, lastName :: String | r } -> String
@@ -446,7 +462,7 @@ This type reads as follows: “`fullName` takes a record with `firstName` and `l
 That is, `fullName` does not care if you pass a record with more fields, as long as the `firstName` and `lastName` properties are present:
 
 ```text
-> fullName { firstName: "Phil", lastName: "Freeman", location: "Los Angeles" }
+> firstName { firstName: "Phil", lastName: "Freeman", location: "Los Angeles" }
 
 Phil Freeman
 ```
@@ -462,33 +478,33 @@ This extensibility allows code in the `Eff` monad to _interleave_ different type
 The `random` function which we used has the following type:
 
 ```haskell
-forall eff1. Eff (random :: Random | eff1) Number
+forall eff1. Eff (random :: RANDOM | eff1) Number
 ```
 
 The set of effects `(random :: Random | eff1)` here is _not_ the same as those appearing in `main`.
 
-However, we can _specialize_ the type of `random` in such a way that the effects do match. If we choose `eff1` to be `(trace :: Trace | eff)`, then the two sets of effects become equal, up to reordering.
+However, we can _instantiate_ the type of `random` in such a way that the effects do match. If we choose `eff1` to be `(console :: CONSOLE | eff)`, then the two sets of effects become equal, up to reordering.
 
-Similarly, `trace` has a type which can be specialized to match the effects of `main`:
+Similarly, `print` has a type which can be specialized to match the effects of `main`:
 
 ```haskell
-forall eff2. String -> Eff (trace :: Trace | eff2) Unit
+forall eff2. (Show a) => a -> Eff (console :: CONSOLE | eff2) Unit
 ```
 
-This time we have to choose `eff2` to be `(random :: Random | eff)`.
+This time we have to choose `eff2` to be `(random :: RANDOM | eff)`.
 
 The point is that the types of `random` and `print` indicate the side-effects which they contain, but in such a way that other side-effects can be _mixed-in_, to build larger computations with larger sets of side-effects.
 
-Note that we don't have to give a type for `main`. `psc` will find a most general type for `main` given the polymorphic types of `random` and `trace`.
+Note that we don't have to give a type for `main`. `psc` will find a most general type for `main` given the polymorphic types of `random` and `print`.
 
 ## The Kind of Eff
 
 The type of `main` is unlike other types we've seen before. To explain it, we need to consider the _kind_ of `Eff`. Recall that types are classified by their kinds just like values are classified by their types. So far, we've only seen kinds built from `*` (the kind of types) and `->` (which builds kinds for type constructors).
 
-To find the kind of `Eff`, use the `:k` command in `psci`:
+To find the kind of `Eff`, use the `:kind` command in PSCi:
 
 ```text
-> :k Control.Monad.Eff.Eff
+> :kind Control.Monad.Eff.Eff
 
  # ! -> * -> *
 ```
@@ -498,26 +514,26 @@ There are two symbols here that we have not seen before.
 `!` is the kind of _effects_, which represents _type-level labels_ for different types of side-effects. To understand this, note that the two labels we saw in `main` above both have kind `!`:
 
 ```text
-> :k Debug.Trace.Trace
+> :kind Control.Monad.Eff.Console.CONSOLE
  
   !
  
-> :k Control.Monad.Eff.Random.Random
+> :kind Control.Monad.Eff.Random.RANDOM
 
   !
 ```
 
 The `#` kind constructor is used to construct kinds for _rows_, i.e. unordered, labelled sets.
 
-So `Eff` is parameterised by a row of effects, and its return type. That is, the first argument to `Eff` is an unordered, labelled set of effect types, and the second argument is the return type.
+So `Eff` is parameterized by a row of effects, and its return type. That is, the first argument to `Eff` is an unordered, labelled set of effect types, and the second argument is the return type.
 
 We can now read the type of `main` above:
 
 ```text
-forall eff. Eff (trace :: Trace, random :: Random | eff) Unit
+forall eff. Eff (console :: CONSOLE, random :: RANDOM | eff) Unit
 ```
 
-The first argument to `Eff` is `(trace :: Trace, random :: Random | eff)`. This is a row which contains the `Trace` effect and the `Random` effect. The pipe symbol `|` separates the labelled effects from the _row variable_ `eff` which represents _any other side-effects_ we might want to mix in.
+The first argument to `Eff` is `(console :: CONSOLE, random :: RANDOM | eff)`. This is a row which contains the `CONSOLE` effect and the `RANDOM` effect. The pipe symbol `|` separates the labelled effects from the _row variable_ `eff` which represents _any other side-effects_ we might want to mix in.
 
 The second argument to `Eff` is `Unit`, which is the return type of the computation.
 
@@ -543,7 +559,7 @@ fullName :: forall r. Object (firstName :: String, lastName :: String | r) -> St
 Note that the curly braces have been removed, and there is an extra `Object` constructor. `Object` is a built-in type constructor defined in the `Prim` module. If we find its kind, we see the following:
 
 ```text
-> :k Object
+> :kind Object
 
   # * -> *
 ```
@@ -561,7 +577,7 @@ Type annotations are usually not required when using `Eff`, since rows of effect
 If we annotate the previous example with a _closed_ row of effects:
 
 ``` haskell
-main :: Eff (trace :: Trace, random :: Random) Unit
+main :: Eff (console :: CONSOLE, random :: RANDOM) Unit
 main = do
   n <- random
   print n
@@ -571,23 +587,23 @@ main = do
 
 ## Handlers and Actions
 
-Functions such as `trace` and `random` are called _actions_. Actions have the `Eff` type on the right hand side of their functions, and their purpose is to _introduce_ new effects.
+Functions such as `print` and `random` are called _actions_. Actions have the `Eff` type on the right hand side of their functions, and their purpose is to _introduce_ new effects.
 
 This is in contrast to _handlers_, in which the `Eff` type appears as the type of a function argument. While actions _add_ to the set of required effects, a handler usually _subtracts_ effects from the set.
 
 As an example, consider the `purescript-exceptions` package. It defines two functions, `throwException` and `catchException`:
 
 ```haskell
-throwException :: forall a eff. Error -> Eff (err :: Exception | eff) a
+throwException :: forall a eff. Error -> Eff (err :: EXCEPTION | eff) a
 
 catchException :: forall a eff. (Error -> Eff eff a) -> 
-                                Eff (err :: Exception | eff) a -> 
+                                Eff (err :: EXCEPTION | eff) a -> 
                                 Eff eff a
 ```
 
-`throwException` is an action. `Eff` appears on the right hand side, and introduces the new `Exception` effect.
+`throwException` is an action. `Eff` appears on the right hand side, and introduces the new `EXCEPTION` effect.
 
-`catchException` is a handler. `Eff` appears as the type of the second function argument, and the overall effect is to _remove_ the `Exception` effect.
+`catchException` is a handler. `Eff` appears as the type of the second function argument, and the overall effect is to _remove_ the `EXCEPTION` effect.
 
 This is useful, because the type system can be used to delimit portions of code which require a particular effect. That code can then be wrapped in a handler, allowing it to be embedded inside a block of code which does not allow that effect.
 
@@ -596,31 +612,31 @@ For example, we can write a piece of code which throws exceptions using the `Exc
 Suppose we wanted to read our application's configuration from a JSON document. The process of parsing the document might result in an exception. The process of reading and parsing the configuration could be written as a function with this type signature:
 
 ``` haskell
-readConfig :: forall eff. Eff (err :: Exception | eff) Config
+readConfig :: forall eff. Eff (err :: EXCEPTION | eff) Config
 ```
 
-Then, in the `main` function, we could use `catchException` to handle the `Exception` effect:
+Then, in the `main` function, we could use `catchException` to handle the `EXCEPTION` effect:
 
 ```haskell
-main = catchException printException $ do
-  config <- readConfig
+main = do
+  config <- catchException printException readConfig
   runApplication config
   
   where
-  printException e = trace (stackTrace e)
+  printException e = trace (message e)
 ```
 
-The Prelude also defines the `runPure` handler, which takes a computation with _no_ side-effects, and safely evaluates it as a pure value:
+The `purescript-eff` package also defines the `runPure` handler, which takes a computation with _no_ side-effects, and safely evaluates it as a pure value:
 
 ```haskell
-type Pure a = forall e. Eff e a
+type Pure a = forall eff. Eff eff a
 
 runPure :: forall a. Pure a -> a
 ```
 
 ## Mutable State
 
-There is another effect defined in the Prelude: the `ST` effect.
+There is another effect defined in the core libraries: the `ST` effect.
 
 The `ST` effect is used to manipulate mutable state. As pure functional programmers, we know that shared mutable state can be problematic. However, the `ST` effect uses the type system to restrict sharing in such a way that only safe _local_ mutation is allowed.
 
@@ -649,7 +665,7 @@ import Control.Monad.ST
 simulate :: forall eff h. Number -> Number -> Number -> Eff (st :: ST h | eff) Number
 simulate x0 v0 time = do
   ref <- newSTRef { x: x0, v: v0 }
-  forE 0 (time * 1000) $ \i -> do
+  forE 0.0 (time * 1000.0) $ \i -> do
     modifySTRef ref (\o ->
       { v: o.v - 9.81 * 0.001
       , x: o.x + o.v * 0.001
@@ -680,22 +696,22 @@ simulate' :: Number -> Number -> Number -> Number
 simulate' x0 v0 time = runPure (runST (simulate x0 v0 time))
 ```
 
-You can even try running this function in `psci`:
+You can even try running this function in PSCi:
 
 ```text
-> Main.simulate' 100 0 0.0
+> Main.simulate' 100.0 0.0 0.0
 100.00
 
-> Main.simulate' 100 0 1.0
+> Main.simulate' 100.0 0.0 1.0
 95.10
 
-> Main.simulate' 100 0 2.0
+> Main.simulate' 100.0 0.0 2.0
 80.39
 
-> Main.simulate' 100 0 3.0
+> Main.simulate' 100.0 0.0 3.0
 55.87
 
-> Main.simulate' 100 0 4.0
+> Main.simulate' 100.0 0.0 4.0
 21.54
 ```
 
@@ -705,7 +721,7 @@ In fact, if we inline the definition of `simulate` at the call to `runST`, as fo
 simulate :: Number -> Number -> Number -> Number
 simulate x0 v0 time = runPure (runST (do
   ref <- newSTRef { x: x0, v: v0 }
-  forE 0 (time * 1000) $ \i -> do
+  forE 0.0 (time * 1000.0) $ \i -> do
     modifySTRef ref (\o ->  
       { v: o.v - 9.81 * 0.001
       , x: o.x + o.v * 0.001  
@@ -720,7 +736,7 @@ then the `psc` compiler will notice that the reference cell is not allowed to es
 ```javascript
 var ref = { x: x0, v: v0 };
 
-Control_Monad_Eff.forE(0)(time * 1000)(function (i) {
+Control_Monad_Eff.forE(0.0)(time * 1000.0)(function (i) {
   return function __do() {
     ref = (function (o) {
       return {
@@ -739,8 +755,8 @@ The `ST` effect is a good way to generate short JavaScript when working with loc
 
 X> ## Exercises
 X> 
-X> 1. (Medium) Rewrite the `safeDivide` function to throw an exception using `throwException` if the denominator does not divide the numerator.
-X> 1. (Difficult) The following is a simple way to estimate pi: randomly choose a large number `N` of points in the unit square, and count the number `n` which lie in the inscribed circle. An estimate for pi is `4n/N`. Use the `Random` and `ST` effects with the `forE` function to write a function which estimates pi in this way.
+X> 1. (Medium) Rewrite the `safeDivide` function to throw an exception using `throwException` if the denominator is zero.
+X> 1. (Difficult) The following is a simple way to estimate pi: randomly choose a large number `N` of points in the unit square, and count the number `n` which lie in the inscribed circle. An estimate for pi is `4n/N`. Use the `RANDOM` and `ST` effects with the `forE` function to write a function which estimates pi in this way.
 
 ## DOM Effects
 
@@ -792,32 +808,33 @@ We are going to build a form which will allow a user to add a new entry into our
 
 To keep things simple, the form will have a fixed shape: the different phone number types (home, cell, work, other) will be expanded into separate text boxes.
 
-The HTML file is completely static, except for the following code which appears inside the `head` element:
+The HTML file is completely static, except for the following code which appears at the end of the file:
 
 ```html
 <script type="text/javascript" src="../dist/Main.js"></script>
-<script type="text/javascript">
-  onload = PS.Main.main;
-</script>  
 ```
 
-The first line includes the JavaScript code which is generated by `psc`, and the second line ensures that the `PS.Main.main` function will run when the page is loaded.
+This line includes the JavaScript code which is generated by Pulp. We place it at the end of the file to ensure that the relevant elements are on the page before we try to access them. To rebuild the `Main.js` file, Pulp can be used with the `--to` argument:
+
+```text
+$ pulp build --to dist/Main.js 
+```
 
 The `Main` module is very simple. It only defines the `main` function, which delegates to the `setupEventHandlers` function in the `Data.AddressBook.UI` module:
 
 ```haskell
-main :: forall eff. Eff (trace :: Trace, dom :: DOM | eff) Unit
+main :: forall eff. Eff (console :: CONSOLE, dom :: DOM | eff) Unit
 main = do
-  trace "Attaching event handlers"
+  log "Attaching event handlers"
   setupEventHandlers 
 ```
 
-Note, however, that this provides an example of interleaving effects: the `trace` function uses the `Trace` effect, and the `setupEventHandlers` function uses both the `Trace` effect and the `DOM` effect (defined in `Control.Monad.Eff.DOM`), as we will see.
+Note, however, that this provides an example of interleaving effects: the `log` function uses the `CONSOLE` effect, and the `setupEventHandlers` function uses both the `CONSOLE` effect and the `DOM` effect (defined in `Control.Monad.Eff.DOM`), as we will see.
 
 The `setupEventHandlers` function is also very simple (notice how we can simplify reasoning about our code, by breaking it into small functions each with a single purpose):
 
 ```haskell
-setupEventHandlers :: forall eff. Eff (trace :: Trace, dom :: DOM | eff) Unit
+setupEventHandlers :: forall eff. Eff (console :: CONSOLE, dom :: DOM | eff) Unit
 setupEventHandlers = do
   -- Listen for changes on form fields
   body >>= addEventListener "change" validateAndUpdateUI 
@@ -839,7 +856,7 @@ It is a matter of personal preference whether this is more or less readable. The
 The responsibility of the `validateAndUpdateUI` action is to run the form validators, and display a list of errors to the user if necessary. Again, it does this by delegating its responsibilities to other functions. Firstly, it uses the `querySelector` action to select the `validationErrors` element of the page. It then uses the `setInnerHTML` action to clear the contents of that element:
 
 ```haskell
-validateAndUpdateUI :: forall eff. Eff (trace :: Trace, dom :: DOM | eff) Unit
+validateAndUpdateUI :: forall eff. Eff (console :: CONSOLE, dom :: DOM | eff) Unit
 validateAndUpdateUI = do
   Just validationErrors <- querySelector "#validationErrors"	    
   setInnerHTML "" validationErrors 
@@ -851,7 +868,7 @@ Next, `validateAndUpdateUI` calls the `validateControls` action to run the form 
   errorsOrResult <- validateControls
 ```
 
-As we will soon see, `errorsOrResult` has type `Either [String] Person`, indicating either a list of errors, or a `Person` record.
+As we will soon see, `errorsOrResult` has type `Either Errors Person`, indicating either a list of errors (`Errors` is a type synonym for `Array String`, as in the previous chapter), or a `Person` record.
 
 Finally, if the input fails validation, `validateAndUpdateUI` delegates to the `displayValidationErrors` action to show the errors on the page:
   
@@ -868,8 +885,8 @@ If the validators succeed, the code simply prints out the validated result onto 
 The `validateControls` function is more interesting. Recall that its role is to run the form validators and return a result indicating either success or failure. The first thing it does is trace a debug message to the console:
 
 ```haskell
-validateControls :: forall eff. Eff (trace :: Trace, dom :: DOM | eff) 
-                                    (Either [String] Person)  
+validateControls :: forall eff. Eff (console :: CONSOLE, dom :: DOM | eff) 
+                                    (Either Errors Person)  
 validateControls = do
   trace "Running validators"
 ```
@@ -909,7 +926,7 @@ The remaining piece of code is the `displayValidationErrors` function. `displayV
 The first thing the function does is to create a new `div` element to contain the errors. Since we are using the [Bootstrap library](http://getbootstrap.com/) to handle the form layout, we use the `addClass` action to set the appropriate CSS classes on the new element:
 
 ```haskell
-displayValidationErrors :: forall eff. [String] -> Eff (dom :: DOM | eff) Unit
+displayValidationErrors :: forall eff. Errors -> Eff (dom :: DOM | eff) Unit
 displayValidationErrors errs = do
   alert <- createElement "div"
     >>= addClass "alert" 
@@ -945,7 +962,7 @@ Finally, the `validationErrors` element is found using the `querySelector` actio
   return unit
 ```
 
-And that's it! Try the user interface out by running `grunt` and then opening the `html/index.html` file in your web browser.
+And that's it! Try the user interface out by running `pulp build --to dist/Main.js` and then opening the `html/index.html` file in your web browser.
 
 You should be able to enter some values into the form fields and see the validation errors printed onto the page. When you have fixed all of the validation errors, you should see the validated result printed onto the browser's console.
 
