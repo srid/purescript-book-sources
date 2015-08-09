@@ -108,10 +108,10 @@ Following this, you should see a large amount of Javascript code printed to the 
 
 ## Removing Unused Code
 
-Pulp provides an alternative command, `pulp build`, which can be used with the `--optimise` option to apply _dead code elimination_, which removes unnecessary Javascript from the output. The result is much smaller:
+Pulp provides an alternative command, `pulp build`, which can be used with the `-O` option to apply _dead code elimination_, which removes unnecessary Javascript from the output. The result is much smaller:
 
 ```text
-$ pulp build --optimise --to output.js
+$ pulp build -O --to output.js
 
 * Building project in ~/my-project
 * Build successful.
@@ -146,7 +146,7 @@ These points are important, since they mean that PureScript generates simple, un
 
 Pulp can also be used to generate CommonJS modules from PureScript code. This can be useful when using NodeJS, or just when developing a larger project which uses CommonJS modules to break code into smaller components.
 
-To build CommonJS modules, use the `pulp build` command (without the `--optimise` option):
+To build CommonJS modules, use the `pulp build` command (without the `-O` option):
 
 ```text
 $ pulp build

@@ -69,7 +69,8 @@ fillPath :: forall eff a. Context2D ->
 Build the rectangle example, providing `Example.Rectangle` as the name of the main module:
 
 ```text
-$ pulp build --main Example.Rectangle --to dist/Main.js 
+$ mkdir dist/
+$ pulp build -O --main Example.Rectangle --to dist/Main.js 
 ```
 
 Now, open the `html/index.html` file and verify that this code renders a blue rectangle in the center of the canvas.
@@ -160,7 +161,7 @@ The result of this code snippet is to fill an isosceles triangle.
 Build the example by specifying `Example.Shapes` as the main module:
 
 ```text
-$ pulp build --main Example.Shapes --to dist/Main.js 
+$ pulp build -O --main Example.Shapes --to dist/Main.js 
 ```
 
 and open `html/index.html` again to see the result. You should see the three different types of shapes rendered to the canvas.
@@ -246,7 +247,7 @@ Note that the final line is required to ensure that the function passed to `forE
 Build this example by specifying the `Example.Random` module as the main module:
 
 ```text
-$ pulp build --main Example.Random --to dist/Main.js 
+$ pulp build -O --main Example.Random --to dist/Main.js 
 ```
 
 and view the result by opening `html/index.html`.
@@ -398,7 +399,7 @@ This action uses `withContext` to preserve the original transformation, and then
 Build the example:
 
 ```text
-$ pulp build --main Example.Refs --to dist/Main.js 
+$ pulp build -O --main Example.Refs --to dist/Main.js 
 ```
 
 and open the `html/index.html` file. If you click the canvas repeatedly, you should see a green rectangle rotating around the center of the canvas.
@@ -613,7 +614,7 @@ strokePath ctx $ lsystem initial productions interpret 5 initialState
 Compile the L-system example using 
 
 ```text
-$ pulp build --main Example.LSystem --to dist/Main.js
+$ pulp build -O --main Example.LSystem --to dist/Main.js
 ```
 
 and open `html/index.html`. You should see the Koch curve rendered to the canvas.

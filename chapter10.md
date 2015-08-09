@@ -60,7 +60,7 @@ Test.gcd(15)(20);
 
 Here, I am assuming that the code was compiled with `pulp build`, which compiles PureScript modules to CommonJS modules. For that reason, I was able to reference the `gcd` function on the `Test` object, after importing the `Test` module using `require`.
 
-You might also like to bundle JavaScript code for the browser, using `pulp build --to file.js`. In that case, you would access the `Test` module from the global PureScript namespace, which defaults to `PS`:
+You might also like to bundle JavaScript code for the browser, using `pulp build -O --to file.js`. In that case, you would access the `Test` module from the global PureScript namespace, which defaults to `PS`:
 
 ```javascript
 var Test = PS.Test;
@@ -317,7 +317,7 @@ A module should contain exactly one such comment.
 
 Javascript functions and values are exported from foreign Javascript modules by assigning them to the `exports` object just like a regular
 CommonJS module. The `psc` compiler treats this module like a regular CommonJS module, and simply adds it as a dependency to the compiled 
-PureScript module. However, when bundling code for the browser with `psc-bundle` or `pulp build --to`, it is very important to follow the
+PureScript module. However, when bundling code for the browser with `psc-bundle` or `pulp build -O --to`, it is very important to follow the
 pattern above, assigning exports to the `exports` object using a property assignment. This is because `psc-bundle` recognizes this format,
 allowing unused Javascript exports to be removed from bundled code.
 
@@ -645,7 +645,7 @@ Expressions of type `Eff eff a` can be invoked from JavaScript like regular Java
 require('Main').main();
 ```
 
-When using `pulp build --to` or `pulp run`, this call to `main` is generated automatically, whenever the `Main` module is defined.
+When using `pulp build -O --to` or `pulp run`, this call to `main` is generated automatically, whenever the `Main` module is defined.
 
 ## Defining New Effects
 
@@ -892,7 +892,7 @@ There are three possibilities for the result of `FormData`:
 - If the outer constructor is `Right`, but the inner constructor is `Nothing`, then `getItem` also returned `Nothing` which means that the key did not exist in local storage. In this case, the application continues quietly.
 - Finally, a value matching the pattern `Right (Just _)` indicates a successfully parsed JSON document. In this case, the application updates the form fields with the appropriate values.
 
-Try out the code, by running `pulp build --to dist/Main.js`, and then opening the browser to `html/index.html`. You should be able to save the form fields' contents to local storage by clicking the Save button, and then see the fields repopulated when the page is refreshed. _Note_: You may need to serve the HTML and Javascript files from a HTTP server locally in order to avoid certain browser-specific issues.
+Try out the code, by running `pulp build -O --to dist/Main.js`, and then opening the browser to `html/index.html`. You should be able to save the form fields' contents to local storage by clicking the Save button, and then see the fields repopulated when the page is refreshed. _Note_: You may need to serve the HTML and Javascript files from a HTTP server locally in order to avoid certain browser-specific issues.
 
 X> ## Exercises
 X> 
