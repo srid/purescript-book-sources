@@ -439,10 +439,10 @@ liftF :: forall f a. (Functor f) => f a -> Free f a
 
 ```haskell
 text :: String -> Content Unit
-text s = Content $ liftF $ TextContent s unit
+text s = liftF $ TextContent s unit
 
 elem :: Element -> Content Unit
-elem e = Content $ liftF $ ElementContent e unit
+elem e = liftF $ ElementContent e unit
 ```
 
 Some other routine modifications have to be made, but the interesting changes are in the `render` function, where we have to _interpret_ our free monad.
@@ -512,7 +512,7 @@ The `renderContent` function is more interesting. Here, we use the `runFreeM` fu
 ```haskell
     renderContent :: Maybe (Content Unit) -> Writer String Unit
     renderContent Nothing = tell " />"
-    renderContent (Just (Content content)) = do
+    renderContent (Just content) = do
       tell ">"
       runFreeM renderContentItem content
       tell "</"
@@ -635,7 +635,7 @@ Now we can build our new action by using the `liftF` function, as before:
 
 ```haskell
 newName :: Content Name
-newName = Content $ liftF $ NewName id
+newName = liftF $ NewName id
 ```
 
 Notice that we provide the `id` function as our continuation, meaning that we return the result of type `Name` unchanged.
