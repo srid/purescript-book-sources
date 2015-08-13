@@ -481,7 +481,7 @@ The `random` function which we used has the following type:
 forall eff1. Eff (random :: RANDOM | eff1) Number
 ```
 
-The set of effects `(random :: Random | eff1)` here is _not_ the same as those appearing in `main`.
+The set of effects `(random :: RANDOM | eff1)` here is _not_ the same as those appearing in `main`.
 
 However, we can _instantiate_ the type of `random` in such a way that the effects do match. If we choose `eff1` to be `(console :: CONSOLE | eff)`, then the two sets of effects become equal, up to reordering.
 
