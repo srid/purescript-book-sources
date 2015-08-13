@@ -264,49 +264,51 @@ This might be good enough, but if we want to see a list of _all_ missing fields 
 
 As an example of working with applicative functors abstractly, this section will show how to write a function which will generically combine side-effects encoded by an applicative functor `f`.
 
-What does this mean? Well, suppose we have an array of wrapped arguments of type `f a` for some `a`. That is, suppose we have an array of type `Array (f a)`. Intuitively, this represents an array of computations with side-effects tracked by `f`, each with return type `a`. If we could run all of these computations in order, we would obtain an array of results of type `Array a`. However, we would still have side-effects tracked by `f`. That is, we expect to be able to turn something of type `Array (f a)` into something of type `f (Array a)` by "combining" the effects inside the original array.
+What does this mean? Well, suppose we have a list of wrapped arguments of type `f a` for some `a`. That is, suppose we have an list of type `List (f a)`. Intuitively, this represents a list of computations with side-effects tracked by `f`, each with return type `a`. If we could run all of these computations in order, we would obtain a list of results of type `List a`. However, we would still have side-effects tracked by `f`. That is, we expect to be able to turn something of type `List (f a)` into something of type `f (List a)` by "combining" the effects inside the original list.
 
-For any fixed array size `n`, there is a function of `n` arguments which builds an array of size `n` out of those arguments. For example, if `n` is `3`, the function is `\x y z -> [x, y, z]`. This function has type `a -> a -> a -> Array a`. We can use the `Applicative` instance to lift this function over `f`, to get a function of type `f a -> f a -> f a -> f (Array a)`. But, since we can do this for any `n`, it makes sense that we should be able to perform the same lifting for any _array_ of arguments.
+For any fixed list size `n`, there is a function of `n` arguments which builds a list of size `n` out of those arguments. For example, if `n` is `3`, the function is `\x y z -> Cons x (Cons y (Cons z Nil))`. This function has type `a -> a -> a -> List a`. We can use the `Applicative` instance for `List` to lift this function over `f`, to get a function of type `f a -> f a -> f a -> f (List a)`. But, since we can do this for any `n`, it makes sense that we should be able to perform the same lifting for any _list_ of arguments.
 
 That means that we should be able to write a function
 
 ```haskell
-combineArray :: forall f a. (Applicative f) => Array (f a) -> f (Array a)
+combineList :: forall f a. (Applicative f) => List (f a) -> f (List a)
 ```
 
-This function will take an array of arguments, which possibly have side-effects, and return a single wrapped array, applying the side-effects of each.
+This function will take a list of arguments, which possibly have side-effects, and return a single wrapped list, applying the side-effects of each.
 
-To write this function, we'll consider the length of the array of arguments. If the array is empty, then we do not need to perform any effects, and we can use `pure` to simply return an empty array:
+To write this function, we'll consider the length of the list of arguments. If the list is empty, then we do not need to perform any effects, and we can use `pure` to simply return an empty list:
 
 ```haskell
-combineArray [] = pure []
+combineList Nil = pure Nil
 ```
 
 In fact, this is the only thing we can do!
 
-If the array is non-empty, then we have a head element, which is a wrapped argument of type `f a`, and a tail of type `Array (f a)`. We can recursively combine the effects in the tail, giving a result of type `f (Array a)`. We can then use `<$>` and `<*>` to lift the cons function `:` over the head and new tail: 
+If the list is non-empty, then we have a head element, which is a wrapped argument of type `f a`, and a tail of type `List (f a)`. We can recursively combine the effects in the tail, giving a result of type `f (List a)`. We can then use `<$>` and `<*>` to lift the `Cons` constructor over the head and new tail: 
 
 ```haskell
-combineArray (x : xs) = (:) <$> x <*> combineArray xs
+combineList (Cons x xs) = Cons <$> x <*> combineList xs
 ```
 
 Again, this was the only sensible implementation, based on the types we were given. 
 
 We can test this function in PSCi, using the `Maybe` type constructor as an example:
 
-```t
-> combineArray [Just 1, Just 2, Just 3]
-Just [1,2,3]
+```text
+> import Data.List
 
-> combineArray [Just 1, Nothing, Just 2]
+> combineList (toList [Just 1, Just 2, Just 3])
+Just (Cons 1 (Cons 2 (Cons 3 Nil)))
+
+> combineList (toList [Just 1, Nothing, Just 2])
 Nothing
 ```
 
-When specialized to `Maybe`, our function returns a `Just` only if every array element was `Just`, otherwise it returns `Nothing`. This is consistent with our intuition of working in a larger language supporting optional values - an array of computations which return optional results only has a result itself if every computation contained a result.
+When specialized to `Maybe`, our function returns a `Just` only if every list element was `Just`, otherwise it returns `Nothing`. This is consistent with our intuition of working in a larger language supporting optional values - a list of computations which return optional results only has a result itself if every computation contained a result.
 
-But the `combineArray` function works for any `Applicative`! We can use it to combine computations which possibly signal an error using `Either err`, or which read from a global configuration using `r ->`.
+But the `combineList` function works for any `Applicative`! We can use it to combine computations which possibly signal an error using `Either err`, or which read from a global configuration using `r ->`.
 
-We will see the `combineArray` function again later, when we consider `Traversable` functors.
+We will see the `combineList` function again later, when we consider `Traversable` functors.
 
 X> ## Exercises
 X> 
@@ -549,25 +551,25 @@ The type signature for `Traversable`'s other function `sequence` may look famili
 sequence :: forall a f. (Applicative m) => t (f a) -> f (t a)
 ```
 
-In fact, the `combineArray` function that we wrote earlier is just a special case of the `sequence` function from the `Traversable` type class. Setting `t` to be the array type constructor `Array`, we recover the type of the `combineArray` function:
+In fact, the `combineList` function that we wrote earlier is just a special case of the `sequence` function from the `Traversable` type class. Setting `t` to be the type constructor `List`, we recover the type of the `combineList` function:
 
 ```haskell
-combineArray :: forall f a. (Applicative f) => Array (f a) -> f (Array a)
+combineList :: forall f a. (Applicative f) => List (f a) -> f (List a)
 ```
 
 Traversable functors capture the notion of traversing a data structure, collecting a set of effectful computations, and combining their effects. In fact, `sequence` and `traverse` are equally important to the definition of `Traversable` - each can be implemented in terms of each other. This is left as an exercise for the interested reader.
 
-The `Traversable` instance for arrays is given in the `Data.Traversable` module. The definition of `traverse` is given here:
+The `Traversable` instance for lists is given in the `Data.List` module. The definition of `traverse` is given here:
 
 ```haskell
--- traverse :: forall a b f. (Applicative f) => (a -> f b) -> Array a -> f (Array b)
-traverse _ [] = pure []
-traverse f (x : xs) = (:) <$> f x <*> traverse f xs
+-- traverse :: forall a b f. (Applicative f) => (a -> f b) -> List a -> f (List b)
+traverse _ Nil = pure Nil
+traverse f (Cons x xs) = Cons <$> f x <*> traverse f xs
 ``` 
 
-In the case of an empty array, we can simply return an empty array using `pure`. If the array is non-empty, we can use the function `f` to create a computation of type `f b` from the head element. We can also call `traverse` recursively on the tail. Finally, we can lift the cons operator `(:)` over the applicative functor `f` to combine the two results.
+In the case of an empty list, we can simply return an empty list using `pure`. If the list is non-empty, we can use the function `f` to create a computation of type `f b` from the head element. We can also call `traverse` recursively on the tail. Finally, we can lift the `Cons` constructor over the applicative functor `f` to combine the two results.
 
-But there are more examples of traversable functors than just arrays. The `Maybe` type constructor we saw earlier also has an instance for `Traversable`. We can try it in PSCi:
+But there are more examples of traversable functors than just arrays and lists. The `Maybe` type constructor we saw earlier also has an instance for `Traversable`. We can try it in PSCi:
 
 ```text
 > import Data.Maybe
