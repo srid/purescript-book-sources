@@ -8,7 +8,7 @@ The goal of this chapter is to explain why monads are a useful abstraction, and 
 
 ## Project Setup
 
-The source code for this project builds on the source for the previous chapter, and as such, uses the Grunt build script to include its source files.
+The source code for this project builds on the source for the previous chapter. The modules from the previous project are included in the `src` directory for this project.
 
 The code is broken into three modules:
 
@@ -18,7 +18,7 @@ The code is broken into three modules:
 
 The project adds the `purescript-eff` package as a Bower dependency. `purescript-eff` defines the `Eff` monad, which will be the subject of the second half of the chapter.
 
-To run this project, build with Grunt, and open the `html/index.html` file in your web browser.
+To run this project, build with `pulp build --to dist/Main.js`, and open the `html/index.html` file in your web browser.
 
 ## Monads and Do Notation
 
