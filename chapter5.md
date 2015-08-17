@@ -87,7 +87,7 @@ In the Euclidean algorithm example, we used an `if .. then .. else` expression t
 A guard is a boolean-valued expression which must be satisfied in addition to the constraints imposed by the patterns. Here is the Euclidean algorithm rewritten to use a guard:
 
 ```haskell
-gcd :: Number -> Number -> Number
+gcd :: Int -> Int -> Int
 gcd n 0 = n
 gcd 0 n = n
 gcd n m | n > m     = gcd (n - m) m 
@@ -451,7 +451,8 @@ $ pulp psci
 
 > import Data.Picture
 
-> showPicture [Line (Point { x: 0, y: 0 }) (Point { x: 1, y: 1 })]
+> showPicture [Line (Point { x: 0.0, y: 0.0 }) 
+                    (Point { x: 1.0, y: 1.0 })]
 
 ["Line [start: (0.0, 0.0), end: (1.0, 1.0)]"]
 ```
