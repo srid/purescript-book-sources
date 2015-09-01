@@ -102,18 +102,18 @@ The problem here is not that there is no `Show` instance for the type we intende
 We can annotate the expression with a type, using the `::` operator, so that PSCi can choose the correct type class instance:
 
 ```text
-> show (Left 10 :: Either Number String)
+> show (Left 10 :: Either Int String)
   
 "Left (10)"
 ```
 
-Some types do not have a `Show` instance defined at all. One example of this is the function type `->`. If we try to `show` a function from `Number` to `Number`, we get an appropriate error message from the type checker:
+Some types do not have a `Show` instance defined at all. One example of this is the function type `->`. If we try to `show` a function from `Int` to `Int`, we get an appropriate error message from the type checker:
 
 ```text
 > show $ \n -> n + 1
   
 Error in declaration it
-No instance found for Prelude.Show (Prim.Number -> Prim.Number)
+No instance found for Prelude.Show (Prim.Int -> Prim.Int)
 ```
 
 X> ## Exercises
