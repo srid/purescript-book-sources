@@ -493,7 +493,7 @@ tail :: forall a. (Partial) => Array a -> Array a
 tail = Data.Array.Unsafe.tail
 ```
 
-Note that we do not define an instance for the `Partial` type class in the `Partial` module. Doing so would defeat its purpose: with this definition, attempting to use the `head` function will result in a type error:
+Note that we do not define an instance for the `Partial` type class! Doing so would defeat its purpose: with this definition, attempting to use the `head` function will result in a type error:
 
 ```text
 > Partial.head [1, 2, 3]
@@ -502,23 +502,22 @@ Error in declaration it
 No instance found for Partial.Partial 
 ```
 
-The user of this library has two options: 
+A user of this library can republish the `Partial` constraint for any functions making use of partial functions:
 
-- The user can opt in to partiality in a module (and all of that module's reverse depedencies!) by declaring an instance of the `Partial` type class in that module:
+```haskell
+secondElement :: forall a. (Partial) => Array a -> a
+secondElement xs = head (tail xs)
+```
 
-    ```haskell
-    module Main where
-    
-    import Partial
-    
-    instance partial :: Partial
-    ```
-- Alternatively, the user can republish the `Partial` constraint for all functions making use of partial functions:
+It would also be possible to provide an unsafe function to remove the `Partial` constraint, allowing a partial function to be used in a context where partiality would normally not be allowed by the typechecker:
 
-    ```haskell
-    secondElement :: forall a. (Partial) => Array a -> a
-    secondElement xs = head (tail xs)
-    ```
+```haskell
+unsafePartial :: forall a. (forall dummy. (Partial) => a) -> a
+```
+
+Note that the `Partial` constraint appears _inside the parentheses_ on the left of the function arrow, but not in the outer `forall`. That is, `unsafePartial` is a function from partial values to regular values.
+
+`unsafePartial` might be implemented using the foreign function interface.
 
 ## Superclasses
 
