@@ -364,7 +364,7 @@ Prim.Number -> Prim.Number
   
 ## Overlapping Instances
 
-PureScript has another rule regarding type class instances, called the _overlapping instances rule_. Whenever a type class instance is required at a function call site, PureScript will use the information inferred by the type checker to choose the correct instance. At that time, there must be exactly one appropriate instance for that type.
+PureScript has another rule regarding type class instances, called the _overlapping instances rule_. Whenever a type class instance is required at a function call site, PureScript will use the information inferred by the type checker to choose the correct instance. At that time, there should be exactly one appropriate instance for that type. If there are multiple valid instances, the compiler will issue a warning.
 
 To demonstrate this, we can try creating two conflicting type class instances for an example type. In the following code, we create two overlapping `Show` instances for the type `T`:
 
@@ -382,13 +382,10 @@ instance showT2 :: Show T where
   show _ = "Instance 2"
 ```
 
-This module will compile with no errors. However, if we open it in PSCi and try to find a `Show` instance for the type `Overlapped`, the overlapping instances rule will be enforced, resulting in an error:
+This module will compile with no warnings. However, if we _use_ `show` at type `T` (requiring the compiler to to find a `Show` instance), the overlapping instances rule will be enforced, resulting in a warning:
 
 ```text
-> show T
-  
 Compiling Overlapped
-Error in declaration it
 Overlapping instances found for Prelude.Show Overlapped.T
 ```
 
