@@ -664,7 +664,7 @@ X>     ```haskell
 X>     newtype Hour = Hour Int
 X>     
 X>     instance eqHour :: Eq Hour where
-X>       eq = eq `on` (`mod` 12)
+X>       eq (Hour n) (Hour m) = mod n 12 == mod m 12
 X>     ```
 X>     
 X>     The newtype `Hour` and its `Eq` instance represent the type of integers modulo 12, so that 1 and 13 are identified as equal, for example. Prove that the type class law holds for your instance.
