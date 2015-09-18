@@ -400,7 +400,7 @@ X> 1. (Medium) Use the `all` function to simplify the result of the `quickCheckP
 
 In this chapter, we met the `purescript-quickcheck` package, which can be used to write tests in a declarative way using the paradigm of _generative testing_. In particular:
 
-- We saw how to automate QuickCheck tests using Grunt.
+- We saw how to automate QuickCheck tests using `pulp test`.
 - We saw how to write properties as functions, and how to use the `<?>` operator to improve error messages.
 - We saw how the `Arbitrary` and `Coarbitrary` type classes enable generation of boilerplate testing code, and how they allow us to test higher-order properties.
 - We saw how to implement custom `Arbitrary` and `Coarbitrary` instances for our own data types.
