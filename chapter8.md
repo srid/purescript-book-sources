@@ -345,7 +345,7 @@ X>
 X>     ```haskell
 X>     map f a = do
 X>       x <- a
-X>       return (f a)
+X>       return (f x)
 X>     ```
 X> 
 X>     Use the monad laws to prove that for any monad, the following holds: 
@@ -357,7 +357,7 @@ X>
 X>     where the `Applicative` instance uses the `ap` function defined above. Recall that `lift2` was defined as follows:
 X>    
 X>     ```haskell
-X>     lift2 :: forall f a b c. (Applicative f). (a -> b -> c) -> f a -> f b -> f c
+X>     lift2 :: forall f a b c. (Applicative f) => (a -> b -> c) -> f a -> f b -> f c
 X>     lift2 f a b = f <$> a <*> b
 X>     ```
 
