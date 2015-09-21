@@ -615,7 +615,7 @@ Suppose we wanted to read our application's configuration from a JSON document. 
 readConfig :: forall eff. Eff (err :: EXCEPTION | eff) Config
 ```
 
-Then, in the `main` function, we could use `catchException` to handle the `EXCEPTION` effect:
+Then, in the `main` function, we could use `catchException` to handle the `EXCEPTION` effect, logging the error and returning a default configuration:
 
 ```haskell
 main = do
@@ -623,13 +623,15 @@ main = do
   runApplication config
   
   where
-  printException e = trace (message e)
+  printException e = do
+    log (message e)
+    return defaultConfig
 ```
 
 The `purescript-eff` package also defines the `runPure` handler, which takes a computation with _no_ side-effects, and safely evaluates it as a pure value:
 
 ```haskell
-type Pure a = forall eff. Eff eff a
+type Pure a = Eff () a
 
 runPure :: forall a. Pure a -> a
 ```
@@ -883,13 +885,13 @@ Finally, if the input fails validation, `validateAndUpdateUI` delegates to the `
 
 If the validators succeed, the code simply prints out the validated result onto the console. In a real application, of course, the next step would be to save the data to the database, or something similar.
 
-The `validateControls` function is more interesting. Recall that its role is to run the form validators and return a result indicating either success or failure. The first thing it does is trace a debug message to the console:
+The `validateControls` function is more interesting. Recall that its role is to run the form validators and return a result indicating either success or failure. The first thing it does is log a debug message to the console:
 
 ```haskell
 validateControls :: forall eff. Eff (console :: CONSOLE, dom :: DOM | eff) 
                                     (Either Errors Person)  
 validateControls = do
-  trace "Running validators"
+  log "Running validators"
 ```
 
 The `Data.AddressBook.UI` module defines a function `valueOf`, which reads a value from a form field. We will not discuss its implementation here, but only show its type signature:
