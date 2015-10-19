@@ -764,15 +764,14 @@ X> 1. (Difficult) The following is a simple way to estimate pi: randomly choose 
 
 In the final sections of this chapter, we will apply what we have learned about effects in the `Eff` monad to the problem of working with the DOM. 
 
-There are a number of freely-available PureScript packages for working directly with the DOM, or with open-source DOM libraries:
+There are a number of freely-available PureScript packages for working directly with the DOM, or with open-source DOM libraries. For example:
 
-- [`purescript-simple-dom`](http://github.com/aktowns/purescript-simple-dom) is a set of bindings to the JavaScript DOM API.
-- [`purescript-jquery`](http://github.com/purescript-contrib/purescript-jquery) is a set of bindings to the [jQuery](http://jquery.org) library.
+- [`purescript-jquery`](http://github.com/paf31/purescript-jquery) is a set of bindings to the [jQuery](http://jquery.org) library.
 - [`purescript-react`](http://github.com/purescript-contrib/purescript-react) is a set of bindings to the [React](http://facebook.github.io/react/) library.
-- [`purescript-angular`](http://github.com/purescript-contrib/purescript-angular) is a set of bindings to the [AngularJS](http://angularjs.org/) library.
-- [`purescript-virtual-dom`](http://github.com/purescript-contrib/purescript-virtual-dom) is a minimal wrapper around the [virtual-dom](http://github.com/Matt-Esch/virtual-dom) library.
 
-However, most of these libraries are still very new, and their APIs are still undergoing changes, so to ensure that the content of this chapter is stable, the source code for this chapter includes a very minimal set of functions for working with DOM elements, in the `Control.Monad.Eff.DOM` module. 
+There are also PureScript libraries which build abstractions on top of these libraries, such as [`purescript-thermite`](http://github.com/paf31/purescript-thermite), which builds on `purescript-react`, and [`purescript-halogen`](http://github.com/slamdata/purescript-halogen) which provides a type-safe set of abstractions on top of the [`virtual-dom`](http://github.com/Matt-Esch/virtual-dom) library.
+
+However, these libraries are still new, and their APIs are still undergoing changes, so to ensure that the content of this chapter is stable, the source code for this chapter includes a very minimal set of functions for working with DOM elements, in the `Control.Monad.Eff.DOM` module. 
 
 It contains actions for querying and creating DOM elements:
 
