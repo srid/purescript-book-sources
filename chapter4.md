@@ -552,7 +552,7 @@ X>
 X>     ```haskell
 X>     count :: forall a. (a -> Boolean) -> Array a -> Int
 X>     count _ [] = 0
-X>     count p xs = if p (head x) 
+X>     count p xs = if p (head xs) 
 X>                  then count p (tail xs) + 1
 X>                  else count p (tail xs)
 X>     ```
