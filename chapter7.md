@@ -40,15 +40,21 @@ We can apply this function easily and see the result in PSCi:
 Address { street: "123 Fake St.", city: "Faketown", state: "CA" }
 ```
 
-However, suppose we did not necessarily have a street, city, or state, and wanted to use the `Maybe` type to indicate a missing value in each of the three cases. 
+However, suppose we did not necessarily have a street, city, or state, and wanted to use the `Maybe` type to indicate a missing value in each of the three cases.
 
 In one case, we might have a missing city. If we try to apply our function directly, we will receive an error from the type checker:
 
 ```text
 > import Data.Maybe
 > address (Just "123 Fake St.") Nothing (Just "CA")
- 
-Cannot unify Data.Maybe.Maybe _2 with Prim.String.
+
+Could not match type
+
+  Maybe String
+
+with type
+
+  String
 ```
 
 Of course, this is an expected type error - `address` takes strings as arguments, not values of type `Maybe String`.
@@ -58,7 +64,7 @@ However, it is reasonable to expect that we should be able to "lift" the `addres
 ```text
 > import Control.Apply
 > lift3 address (Just "123 Fake St.") Nothing (Just "CA")
- 
+
 Nothing
 ```
 
@@ -66,7 +72,7 @@ In this case, the result is `Nothing`, because one of the arguments (the city) w
 
 ```text
 > lift3 address (Just "123 Fake St.") (Just "Faketown") (Just "CA")
-  
+
 Just (Address { street: "123 Fake St.", city: "Faketown", state: "CA" })
 ```
 
@@ -79,8 +85,8 @@ So, we can lift functions with small numbers of arguments by using `lift2`, `lif
 It is instructive to look at the type of `lift3`:
 
 ```text
-> :type Control.Apply.lift3
-forall a b c d f. (Prelude.Apply f) => (a -> b -> c -> d) -> f a -> f b -> f c -> f d
+> :type lift3
+forall a b c d f. Apply f => (a -> b -> c -> d) -> f a -> f b -> f c -> f d
 ```
 
 In the `Maybe` example above, the type constructor `f` is `Maybe`, so that `lift3` is specialized to the following type:
@@ -89,19 +95,19 @@ In the `Maybe` example above, the type constructor `f` is `Maybe`, so that `lift
 forall a b c d. (a -> b -> c -> d) -> Maybe a -> Maybe b -> Maybe c -> Maybe d
 ```
 
-This type says that we can take any function with three arguments, and lift it to give a new function whose argument and result types are wrapped with `Maybe`. 
+This type says that we can take any function with three arguments, and lift it to give a new function whose argument and result types are wrapped with `Maybe`.
 
 Certainly, this is not possible for any type constructor `f`, so what is it about the `Maybe` type which allowed us to do this? Well, in specializing the type above, we removed a type class constraint on `f` from the `Apply` type class. `Apply` is defined in the Prelude as follows:
 
 ```haskell
 class Functor f where
   map :: forall a b. (a -> b) -> f a -> f b
-  
-class (Functor f) <= Apply f where
+
+class Functor f <= Apply f where
   apply :: forall a b. f (a -> b) -> f a -> f b
 ```
 
-The `Apply` type class is a subclass of `Functor`, and defines an additional function `apply`. As `<$>` was defined as an alias for `map`, the `Prelude` module defines `<*>` as an alias. As we'll see, these two operators are often used together.
+The `Apply` type class is a subclass of `Functor`, and defines an additional function `apply`. As `<$>` was defined as an alias for `map`, the `Prelude` module defines `<*>` as an alias for `apply`. As we'll see, these two operators are often used together.
 
 The type of `apply` looks a lot like the type of `map`. The difference between `map` and `apply` is that `map` takes a function as an argument, whereas the first argument to `apply` is wrapped in the type constructor `f`. We'll see how this is used soon, but first, let's see how to implement the `Apply` type class for the `Maybe` type:
 
@@ -109,7 +115,7 @@ The type of `apply` looks a lot like the type of `map`. The difference between `
 instance functorMaybe :: Functor Maybe where
   map f (Just a) = Just (f a)
   map f Nothing  = Nothing
-  
+
 instance applyMaybe :: Apply Maybe where
   apply (Just f) (Just x) = Just (f x)
   apply _        _        = Nothing
@@ -128,9 +134,13 @@ Putting this all together, we see that if we have values `x :: f a` and `y :: f 
 In general, we can use `<$>` on the first argument, and `<*>` for the remaining arguments, as illustrated here for `lift3`:
 
 ```haskell
-lift3 :: forall a b c d f. (Prelude.Apply f) => 
-                           (a -> b -> c -> d) -> 
-                           f a -> f b -> f c -> f d
+lift3 :: forall a b c d f
+       . Apply f
+      => (a -> b -> c -> d)
+      -> f a
+      -> f b
+      -> f c
+      -> f d
 lift3 f x y z = f <$> x <*> y <*> z
 ```
 
@@ -140,11 +150,9 @@ As an example, we can try lifting the address function over `Maybe`, directly us
 
 ```text
 > address <$> Just "123 Fake St." <*> Just "Faketown" <*> Just "CA"
-
 Just (Address { street: "123 Fake St.", city: "Faketown", state: "CA" })
 
 > address <$> Just "123 Fake St." <*> Nothing <*> Just "CA"
-
 Nothing
 ```
 
@@ -155,11 +163,11 @@ Try lifting some other functions of various numbers of arguments over `Maybe` in
 There is a related type class called `Applicative`, defined as follows:
 
 ```haskell
-class (Apply f) <= Applicative f where
+class Apply f <= Applicative f where
   pure :: forall a. a -> f a
 ```
 
-`Applicative` is a subclass of `Apply` and defines the `pure` function. `pure` takes a value and returns a value whose type has been wrapped with the type constructor `f`. 
+`Applicative` is a subclass of `Apply` and defines the `pure` function. `pure` takes a value and returns a value whose type has been wrapped with the type constructor `f`.
 
 Here is the `Applicative` instance for `Maybe`:
 
@@ -191,7 +199,9 @@ Let's see some more examples of lifting functions over different `Applicative` f
 Here is a simple example function defined in PSCi, which joins three names to form a full name:
 
 ```text
-> let fullName first middle last = last ++ ", " ++ first ++ " " ++ middle 
+> import Prelude
+
+> let fullName first middle last = last <> ", " <> first <> " " <> middle
 
 > fullName "Phillip" "A" "Freeman"
 Freeman, Phillip A
@@ -201,12 +211,11 @@ Now suppose that this function forms the implementation of a (very simple!) web 
 
 ```text
 > import Data.Maybe
+
 > fullName <$> Just "Phillip" <*> Just "A" <*> Just "Freeman"
-  
 Just ("Freeman, Phillip A")
 
 > fullName <$> Just "Phillip" <*> Nothing <*> Just "Freeman"
-  
 Nothing
 ```
 
@@ -217,8 +226,8 @@ This is good, because now we can send an error response back from our web servic
 Instead of lifting over `Maybe`, we can lift over `Either String`, which allows us to return an error message. First, let's write an operator to convert optional inputs into computations which can signal an error using `Either String`:
 
 ```text
-> let (<?>) Nothing  err = Left err
-      (<?>) (Just a) _ = Right a
+> let withError Nothing  err = Left err
+      withError (Just a) _   = Right a
 ```
 
 _Note_: In the `Either err` applicative functor, the `Left` constructor indicates an error, and the `Right` constructor indicates success.
@@ -226,11 +235,11 @@ _Note_: In the `Either err` applicative functor, the `Left` constructor indicate
 Now we can lift over `Either String`, providing an appropriate error message for each parameter:
 
 ```text
-> let fullNameEither first middle last = 
-    fullName <$> (first  <?> "First name was missing")
-             <*> (middle <?> "Middle name was missing")
-             <*> (last   <?> "Last name was missing")
-  
+> let fullNameEither first middle last =
+    fullName <$> (first  `withError` "First name was missing")
+             <*> (middle `withError` "Middle name was missing")
+             <*> (last   `withError` "Last name was missing")
+
 > :type fullNameEither
 Maybe String -> Maybe String -> Maybe String -> Either String String
 ```
@@ -241,37 +250,36 @@ We can try out the function with different inputs:
 
 ```text
 > fullNameEither (Just "Phillip") (Just "A") (Just "Freeman")
-Right ("Freeman, Phillip A")
+(Right "Freeman, Phillip A")
 
 > fullNameEither (Just "Phillip") Nothing (Just "Freeman")
-Left ("Middle name was missing")
+(Left "Middle name was missing")
 
 > fullNameEither (Just "Phillip") (Just "A") Nothing
-Left ("Last name was missing")
+(Left "Last name was missing")
 ```
 
 In this case, we see the error message corresponding to the first missing field, or a successful result if every field was provided. However, if we are missing multiple inputs, we still only see the first error:
 
 ```text
 > fullNameEither Nothing Nothing Nothing
-  
-Left ("First name was missing")
+(Left "First name was missing")
 ```
 
 This might be good enough, but if we want to see a list of _all_ missing fields in the error, then we need something more powerful than `Either String`. We will see a solution later in this chapter.
 
-## Combining Effects 
+## Combining Effects
 
 As an example of working with applicative functors abstractly, this section will show how to write a function which will generically combine side-effects encoded by an applicative functor `f`.
 
 What does this mean? Well, suppose we have a list of wrapped arguments of type `f a` for some `a`. That is, suppose we have an list of type `List (f a)`. Intuitively, this represents a list of computations with side-effects tracked by `f`, each with return type `a`. If we could run all of these computations in order, we would obtain a list of results of type `List a`. However, we would still have side-effects tracked by `f`. That is, we expect to be able to turn something of type `List (f a)` into something of type `f (List a)` by "combining" the effects inside the original list.
 
-For any fixed list size `n`, there is a function of `n` arguments which builds a list of size `n` out of those arguments. For example, if `n` is `3`, the function is `\x y z -> Cons x (Cons y (Cons z Nil))`. This function has type `a -> a -> a -> List a`. We can use the `Applicative` instance for `List` to lift this function over `f`, to get a function of type `f a -> f a -> f a -> f (List a)`. But, since we can do this for any `n`, it makes sense that we should be able to perform the same lifting for any _list_ of arguments.
+For any fixed list size `n`, there is a function of `n` arguments which builds a list of size `n` out of those arguments. For example, if `n` is `3`, the function is `\x y z -> x : y : z : Nil`. This function has type `a -> a -> a -> List a`. We can use the `Applicative` instance for `List` to lift this function over `f`, to get a function of type `f a -> f a -> f a -> f (List a)`. But, since we can do this for any `n`, it makes sense that we should be able to perform the same lifting for any _list_ of arguments.
 
 That means that we should be able to write a function
 
 ```haskell
-combineList :: forall f a. (Applicative f) => List (f a) -> f (List a)
+combineList :: forall f a. Applicative f => List (f a) -> f (List a)
 ```
 
 This function will take a list of arguments, which possibly have side-effects, and return a single wrapped list, applying the side-effects of each.
@@ -284,23 +292,24 @@ combineList Nil = pure Nil
 
 In fact, this is the only thing we can do!
 
-If the list is non-empty, then we have a head element, which is a wrapped argument of type `f a`, and a tail of type `List (f a)`. We can recursively combine the effects in the tail, giving a result of type `f (List a)`. We can then use `<$>` and `<*>` to lift the `Cons` constructor over the head and new tail: 
+If the list is non-empty, then we have a head element, which is a wrapped argument of type `f a`, and a tail of type `List (f a)`. We can recursively combine the effects in the tail, giving a result of type `f (List a)`. We can then use `<$>` and `<*>` to lift the `Cons` constructor over the head and new tail:
 
 ```haskell
 combineList (Cons x xs) = Cons <$> x <*> combineList xs
 ```
 
-Again, this was the only sensible implementation, based on the types we were given. 
+Again, this was the only sensible implementation, based on the types we were given.
 
 We can test this function in PSCi, using the `Maybe` type constructor as an example:
 
 ```text
 > import Data.List
+> import Data.Maybe
 
-> combineList (toList [Just 1, Just 2, Just 3])
-Just (Cons 1 (Cons 2 (Cons 3 Nil)))
+> combineList (fromFoldable [Just 1, Just 2, Just 3])
+(Just (Cons 1 (Cons 2 (Cons 3 Nil))))
 
-> combineList (toList [Just 1, Nothing, Just 2])
+> combineList (fromFoldable [Just 1, Nothing, Just 2])
 Nothing
 ```
 
@@ -311,10 +320,10 @@ But the `combineList` function works for any `Applicative`! We can use it to com
 We will see the `combineList` function again later, when we consider `Traversable` functors.
 
 X> ## Exercises
-X> 
+X>
 X> 1. (Easy) Use `lift2` to write lifted versions of the numeric operators `+`, `-`, `*` and `/` which work with optional arguments.
-X> 1. (Medium) Convince yourself that the definition of `lift3` given above in terms of `<$>` and `<*>` does type check. 
-X> 1. (Difficult) Write a function `combineMaybe` which has type `forall a f. (Applicative f) => Maybe (f a) -> f (Maybe a)`. This function takes an optional computation with side-effects, and returns a side-effecting computation which has an optional result.
+X> 1. (Medium) Convince yourself that the definition of `lift3` given above in terms of `<$>` and `<*>` does type check.
+X> 1. (Difficult) Write a function `combineMaybe` which has type `forall a f. Applicative f => Maybe (f a) -> f (Maybe a)`. This function takes an optional computation with side-effects, and returns a side-effecting computation which has an optional result.
 
 ## Applicative Validation
 
@@ -338,36 +347,38 @@ These functions can be used to construct a `Person` representing an address book
 
 ```haskell
 examplePerson :: Person
-examplePerson = 
-  person "John" "Smith" 
-         (address "123 Fake St." "FakeTown" "CA") 
-	     [ phoneNumber HomePhone "555-555-5555"
+examplePerson =
+  person "John" "Smith"
+         (address "123 Fake St." "FakeTown" "CA")
+  	     [ phoneNumber HomePhone "555-555-5555"
          , phoneNumber CellPhone "555-555-0000"
-	     ]
+  	     ]
 ```
 
 Test this value in PSCi (this result has been formatted):
 
 ```text
 > import Data.AddressBook
-> examplePerson 
 
-Person { 
-  firstName: "John", 
-  lastName: "Smith", 
-  address: Address { 
-    street: "123 Fake St.", 
-    city: "FakeTown", 
-    state: "CA" 
-  }, 
-  phones: [ PhoneNumber { 
-    type: HomePhone, 
-    number: "555-555-5555" 
-  }, PhoneNumber { 
-    type: CellPhone, 
-    number: "555-555-0000" 
-  }] 
-}
+> examplePerson
+Person
+  { firstName: "John",
+  , lastName: "Smith",
+  , address: Address
+      { street: "123 Fake St."
+      , city: "FakeTown"
+      , state: "CA"
+      },
+  , phones: [ PhoneNumber
+                { type: HomePhone
+                , number: "555-555-5555"
+                }
+            , PhoneNumber
+                { type: CellPghone
+                , number: "555-555-0000"
+                }
+            ]
+  }  
 ```
 
 We saw in a previous section how we could use the `Either String` functor to validate a data structure of type `Person`. For example, provided functions to validate the two names in the structure, we might validate the entire data structure as follows:
@@ -383,7 +394,7 @@ validatePerson (Person o) =
          <*> (nonEmpty o.lastName  *> pure o.lastName)
          <*> pure o.address
          <*> pure o.phones
-``` 
+```
 
 In the first two lines, we use the `nonEmpty` function to validate a non-empty string. `nonEmpty` returns an error (indicated with the `Left` constructor) if its input is empty, or a successful empty value (`unit`) using the `Right` constructor otherwise. We use the sequencing operator `*>` to indicate that we want to perform two validations, returning the result from the validator on the right. In this case, the validator on the right simply uses `pure` to return the input unchanged.
 
@@ -393,13 +404,12 @@ This function can be seen to work in PSCi, but has a limitation which we have se
 
 ```haskell
 > validatePerson $ person "" "" (address "" "" "") []
-  
-Left ("Field cannot be empty")
+(Left "Field cannot be empty")
 ```
 
 The `Either String` applicative functor only provides the first error encountered. Given the input here, we would prefer to see two errors - one for the missing first name, and a second for the missing last name.
 
-There is another applicative functor which is provided by the `purescript-validation` library. It is simply called `V`, and it provides the ability to return errors in any _semigroup_. For example, we can use `V (Array String)` to return an array of `String`s as errors, concatenating new errors onto the end of the array.
+There is another applicative functor which is provided by the `purescript-validation` library. This functor is called `V`, and it provides the ability to return errors in any _semigroup_. For example, we can use `V (Array String)` to return an array of `String`s as errors, concatenating new errors onto the end of the array.
 
 The `Data.AddressBook.Validation` module uses the `V (Array String)` applicative functor to validate the data structures in the `Data.AddressBook` module.
 
@@ -409,17 +419,17 @@ Here is an example of a validator taken from the `Data.AddressBook.Validation` m
 type Errors = Array String
 
 nonEmpty :: String -> String -> V Errors Unit
-nonEmpty field "" = invalid ["Field '" ++ field ++ "' cannot be empty"]
+nonEmpty field "" = invalid ["Field '" <> field <> "' cannot be empty"]
 nonEmpty _     _  = pure unit
 
 lengthIs :: String -> Number -> String -> V Errors Unit
-lengthIs field len value | S.length value /= len = 
-  invalid ["Field '" ++ field ++ "' must have length " ++ show len]
-lengthIs _     _   _     = 
+lengthIs field len value | S.length value /= len =
+  invalid ["Field '" <> field <> "' must have length " <> show len]
+lengthIs _     _   _     =
   pure unit
 
-validateAddress :: Address -> V Errors Address 
-validateAddress (Address o) = 
+validateAddress :: Address -> V Errors Address
+validateAddress (Address o) =
   address <$> (nonEmpty "Street" o.street *> pure o.street)
           <*> (nonEmpty "City"   o.city   *> pure o.city)
           <*> (lengthIs "State" 2 o.state *> pure o.state)
@@ -436,15 +446,13 @@ We can try this function in PSCi:
 > import Data.AddressBook.Validation
 
 > validateAddress $ address "" "" ""
-  
-Invalid ([ "Field 'Street' cannot be empty"
+(Invalid [ "Field 'Street' cannot be empty"
          , "Field 'City' cannot be empty"
          , "Field 'State' must have length 2"
          ])
 
 > validateAddress $ address "" "" "CA"
-  
-Invalid ([ "Field 'Street' cannot be empty"
+(Invalid [ "Field 'Street' cannot be empty"
          , "Field 'City' cannot be empty"
          ])
 ```
@@ -457,10 +465,10 @@ The `validatePhoneNumber` function uses a regular expression to validate the for
 
 ```haskell
 matches :: String -> R.Regex -> String -> V Errors Unit
-matches _     regex value | R.test regex value = 
+matches _     regex value | R.test regex value =
   pure unit
-matches field _     _     = 
-  invalid ["Field '" ++ field ++ "' did not match the required format"]
+matches field _     _     =
+  invalid ["Field '" <> field <> "' did not match the required format"]
 ```
 
 Again, notice how `pure` is used to indicate successful validation, and `invalid` is used to signal an array of errors.
@@ -469,7 +477,7 @@ Again, notice how `pure` is used to indicate successful validation, and `invalid
 
 ```haskell
 validatePhoneNumber :: PhoneNumber -> V Errors PhoneNumber
-validatePhoneNumber (PhoneNumber o) = 
+validatePhoneNumber (PhoneNumber o) =
   phoneNumber <$> pure o."type"
               <*> (matches "Number" phoneNumberRegex o.number *> pure o.number)
 ```
@@ -478,16 +486,14 @@ Again, try running this validator against some valid and invalid inputs in PSCi:
 
 ```text
 > validatePhoneNumber $ phoneNumber HomePhone "555-555-5555"
-  
 Valid (PhoneNumber { type: HomePhone, number: "555-555-5555" })
 
 > validatePhoneNumber $ phoneNumber HomePhone "555.555.5555"
-  
 Invalid (["Field 'Number' did not match the required format"])
 ```
 
 X> ## Exercises
-X> 
+X>
 X> 1. (Easy) Use a regular expression validator to ensure that the `state` field of the `Address` type contains two alphabetic characters. _Hint_: see the source code for `phoneNumberRegex`.
 X> 1. (Medium) Using the `matches` validator, write a validation function which checks that a string is not entirely whitespace. Use it to replace `nonEmpty` where appropriate.
 
@@ -497,19 +503,19 @@ The remaining validator is `validatePerson`, which combines the validators we ha
 
 ```haskell
 arrayNonEmpty :: forall a. String -> Array a -> V Errors Unit
-arrayNonEmpty field [] = 
-  invalid ["Field '" ++ field ++ "' must contain at least one value"]
-arrayNonEmpty _     _  = 
+arrayNonEmpty field [] =
+  invalid ["Field '" <> field <> "' must contain at least one value"]
+arrayNonEmpty _     _  =
   pure unit
 
 validatePerson :: Person -> V Errors Person
 validatePerson (Person o) =
-  person <$> (nonEmpty "First Name" o.firstName *> 
+  person <$> (nonEmpty "First Name" o.firstName *>
               pure o.firstName)
-         <*> (nonEmpty "Last Name"  o.lastName  *> 
+         <*> (nonEmpty "Last Name"  o.lastName  *>
               pure o.lastName)
-	     <*> validateAddress o.address
-         <*> (arrayNonEmpty "Phone Numbers" o.phones *> 
+	       <*> validateAddress o.address
+         <*> (arrayNonEmpty "Phone Numbers" o.phones *>
               traverse validatePhoneNumber o.phones)
 ```
 
@@ -519,8 +525,8 @@ There is one more interesting function here, which we haven't seen yet - `traver
 
 ```haskell
 class (Functor t, Foldable t) <= Traversable t where
-  traverse :: forall a b f. (Applicative f) => (a -> f b) -> t a -> f (t b)
-  sequence :: forall a f. (Applicative f) => t (f a) -> f (t a)
+  traverse :: forall a b f. Applicative f => (a -> f b) -> t a -> f (t b)
+  sequence :: forall a f. Applicative f => t (f a) -> f (t a)
 ```
 
 `Traversable` defines the class of _traversable functors_. The types of its functions might look a little intimidating, but `validatePerson` provides a good motivating example.
@@ -530,7 +536,7 @@ Every traversable functor is both a `Functor` and `Foldable` (recall that a _fol
 This may sound complicated, but let's simplify things by specializing to the case of arrays. The array type constructor is traversable, which means that there is a function:
 
 ```haskell
-traverse :: forall a b f. (Applicative f) => (a -> f b) -> Array a -> f (Array b)
+traverse :: forall a b f. Applicative f => (a -> f b) -> Array a -> f (Array b)
 ```
 
 Intuitively, given any applicative functor `f`, and a function which takes a value of type `a` and returns a value of type `b` (with side-effects tracked by `f`), we can apply the function to each element of an array of type `Array a` to obtain a result of type `Array b` (with side-effects tracked by `f`).
@@ -545,27 +551,27 @@ This type signature says that if we have a validation function `f` for a type `a
 
 In general, `traverse` walks over the elements of a data structure, performing computations with side-effects and accumulating a result.
 
-The type signature for `Traversable`'s other function `sequence` may look familiar:
+The type signature for `Traversable`'s other function `sequence` might look more familiar:
 
 ```haskell
-sequence :: forall a f. (Applicative m) => t (f a) -> f (t a)
+sequence :: forall a f. Applicative m => t (f a) -> f (t a)
 ```
 
 In fact, the `combineList` function that we wrote earlier is just a special case of the `sequence` function from the `Traversable` type class. Setting `t` to be the type constructor `List`, we recover the type of the `combineList` function:
 
 ```haskell
-combineList :: forall f a. (Applicative f) => List (f a) -> f (List a)
+combineList :: forall f a. Applicative f => List (f a) -> f (List a)
 ```
 
-Traversable functors capture the notion of traversing a data structure, collecting a set of effectful computations, and combining their effects. In fact, `sequence` and `traverse` are equally important to the definition of `Traversable` - each can be implemented in terms of each other. This is left as an exercise for the interested reader.
+Traversable functors capture the idea of traversing a data structure, collecting a set of effectful computations, and combining their effects. In fact, `sequence` and `traverse` are equally important to the definition of `Traversable` - each can be implemented in terms of each other. This is left as an exercise for the interested reader.
 
 The `Traversable` instance for lists is given in the `Data.List` module. The definition of `traverse` is given here:
 
 ```haskell
--- traverse :: forall a b f. (Applicative f) => (a -> f b) -> List a -> f (List b)
+-- traverse :: forall a b f. Applicative f => (a -> f b) -> List a -> f (List b)
 traverse _ Nil = pure Nil
 traverse f (Cons x xs) = Cons <$> f x <*> traverse f xs
-``` 
+```
 
 In the case of an empty list, we can simply return an empty list using `pure`. If the list is non-empty, we can use the function `f` to create a computation of type `f b` from the head element. We can also call `traverse` recursively on the tail. Finally, we can lift the `Cons` constructor over the applicative functor `f` to combine the two results.
 
@@ -575,32 +581,29 @@ But there are more examples of traversable functors than just arrays and lists. 
 > import Data.Maybe
 
 > traverse (nonEmpty "Example") Nothing
-  
-Valid (Nothing)
+(Valid Nothing)
 
 > traverse (nonEmpty "Example") (Just "")
-  
-Invalid (["Field 'Example' cannot be empty"])
+(Invalid ["Field 'Example' cannot be empty"])
 
 > traverse (nonEmpty "Example") (Just "Testing")
-  
-Valid (Just (Unit {}))
+(Valid (Just unit))
 ```
 
 These examples show that traversing the `Nothing` value returns `Nothing` with no validation, and traversing `Just x` uses the validation function to validate `x`. That is, `traverse` takes a validation function for type `a` and returns a validation function for `Maybe a`, i.e. a validation function for optional values of type `a`.
 
-Other traversable functors include `Tuple a` and `Either a` for any type `a` and the type constructor `List` of linked lists. Generally, most "container" data type constructors have `Traversable` instances. As an example, the exercises will include writing a `Traversable` instance for a type of binary trees.
+Other traversable functors include `Array`, and `Tuple a` and `Either a` for any type `a`. Generally, most "container" data type constructors have `Traversable` instances. As an example, the exercises will include writing a `Traversable` instance for a type of binary trees.
 
 X> ## Exercises
-X> 
+X>
 X> 1. (Medium) Write a `Traversable` instance for the following binary tree data structure, which combines side-effects from left-to-right:
-X> 
+X>
 X>     ```haskell
 X>     data Tree a = Leaf | Branch (Tree a) a (Tree a)
 X>     ```
-X> 
+X>
 X>     This corresponds to an in-order traversal of the tree. What about a preorder traversal? What about reverse order?
-X> 
+X>
 X> 1. (Medium) Modify the code to make the `address` field of the `Person` type optional using `Data.Maybe`. _Hint_: Use `traverse` to validate a field of type `Maybe a`.
 X> 1. (Difficult) Try to write `sequence` in terms of `traverse`. Can you write `traverse` in terms of `sequence`?
 
@@ -615,13 +618,13 @@ For example, the `V` validation functor returned an _array_ of errors, but it wo
 As a second example, the `purescript-parallel` package provides a type constructor `Parallel` which represents _asynchronous computations_. `Parallel` has an `Applicative` instance which computes its results _in parallel_:
 
 ```haskell
-f <$> inParallel computation1 
-  <*> inParallel computation2
+f <$> parallel computation1
+  <*> parallel computation2
 ```
 
 This computation would start computing values asynchronously using `computation1` and `computation2`. When both results have been computed, they would be combined into a single result using the function `f`.
 
-We will see this idea in more detail when we apply applicative functors to the problem of _callback hell_ later in the book. 
+We will see this idea in more detail when we apply applicative functors to the problem of _callback hell_ later in the book.
 
 Applicative functors are a natural way to capture side-effects which can be combined in parallel.
 

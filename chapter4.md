@@ -12,7 +12,7 @@ The motivating example for this chapter is a library of functions for working wi
 
 The source code for this chapter is contained in the two files `src/Data/Path.purs` and `src/FileOperations.purs`.
 
-The `Data.Path` module contains a model of a virtual filesystem. You do not need to modify the contents of this module. 
+The `Data.Path` module contains a model of a virtual filesystem. You do not need to modify the contents of this module.
 
 The `FileOperations` module contains functions which use the `Data.Path` API. Solutions to the exercises can be completed in this file.
 
@@ -63,23 +63,24 @@ Just as we branch based on whether the input is non-zero, in the array case, we 
 import Prelude
 
 import Data.Array (null)
-import Data.Array.Unsafe (tail)
+import Data.Array.Partial (tail)
+import Partial.Unsafe (unsafePartial)
 
 length :: forall a. Array a -> Int
-length arr = 
+length arr =
   if null arr
-  then 0 
-  else 1 + length (tail arr)
+    then 0
+    else 1 + length (unsafePartial tail arr)
 ```
 
 In this function, we use an `if .. then .. else` expression to branch based on the emptiness of the array. The `null` function returns `true` on an empty array. Empty arrays have length zero, and a non-empty array has a length that is one more than the length of its tail.
 
-This example is obviously a very impractical way to find the length of an array in JavaScript, but should provide enough help to allow you to complete the following exercises.
+This example is obviously a very impractical way to find the length of an array in JavaScript, but should provide enough help to allow you to complete the following exercises:
 
 X> ## Exercises
-X> 
+X>
 X> 1. (Easy) Write a recursive function which returns `true` if and only if its input is an even integer.
-X> 2. (Medium) Write a recursive function which counts the number of even integers in an array. _Hint_: use the `head` function from `Data.Array.Unsafe`.
+X> 2. (Medium) Write a recursive function which counts the number of even integers in an array. _Hint_: the function `unsafePartial head` (where `head` is also imported from `Data.Array.Partial`) can be used to find the first element in a non-empty array.
 
 ## Maps
 
@@ -124,7 +125,7 @@ Let's look at the type of `map`:
 
 ```text
 > :type map
-forall a b f. (Prelude.Functor f) => (a -> b) -> f a -> f b
+forall a b f. Prelude.Functor f => (a -> b) -> f a -> f b
 ```
 
 The type of `map` is actually more general than we need in this chapter. For our purposes, we can treat `map` as if it had the following less general type:
@@ -141,7 +142,7 @@ This type says that we can choose any two types, `a` and `b`, with which to appl
 ["1","2","3","4","5"]
 ```
 
-Even though the infix operator `<$>` looks like special syntax, it is in fact a regular PureScript function. It is simply _applied_ using infix syntax. In fact, the function can be used like a regular function by enclosing its name in parentheses. This means that we can used the parenthesized name `(<$>)` in place of `map` on arrays:
+Even though the infix operator `<$>` looks like special syntax, it is in fact just an alias for a regular PureScript function. The function is simply _applied_ using infix syntax. In fact, the function can be used like a regular function by enclosing its name in parentheses. This means that we can used the parenthesized name `(<$>)` in place of `map` on arrays:
 
 ```text
 > (<$>) show [1, 2, 3, 4, 5]
@@ -149,11 +150,10 @@ Even though the infix operator `<$>` looks like special syntax, it is in fact a 
 ["1","2","3","4","5"]
 ```
 
-Defining a new infix operator uses the same notation: define infix operators just like regular functions, enclosing the operator name in parentheses. For example, the `Data.Array` module defines an infix operator `(..)` as a synonym for the `range` function, as follows:
+Infix function names are defined as _aliases_ for existing function names. For example, the `Data.Array` module defines an infix operator `(..)` as a synonym for the `range` function, as follows:
 
 ```haskell
-(..) :: Int -> Int -> Array Int
-(..) = range
+infix 8 range as ..
 ```
 
 We can use this operator as follows:
@@ -164,27 +164,21 @@ We can use this operator as follows:
 [1, 2, 3, 4, 5]
 
 > show <$> (1 .. 5)
-  
+
 ["1","2","3","4","5"]
 ```
 
-_Note_: User-defined infix operators can be a great tool for defining domain-specific languages with a natural syntax. However, used carelessly, they can render code unreadable to beginners, so it is wise to exercise caution when defining any new operators.
+_Note_: Infix operators can be a great tool for defining domain-specific languages with a natural syntax. However, used carelessly, they can render code unreadable to beginners, so it is wise to exercise caution when defining any new operators.
 
-In the example above, we parenthesized the expression `1 .. 5`, but this was actually not necessary, because the `Data.Array` module assigns a higher precedence level to the `..` operator than that assigned to the `<$>` operator. PureScript provides a way to assign a precedence level to user-defined operators, using the `infix` keyword:
-
-```text
-infix 5 ..
-```
-
-This assigns a precedence level of 5 to the `(..)` operator, which is higher than the precedence level of `<$>`, meaning that we do not need to add parentheses:
+In the example above, we parenthesized the expression `1 .. 5`, but this was actually not necessary, because the `Data.Array` module assigns a higher precedence level to the `..` operator than that assigned to the `<$>` operator. In the example above, the precedence of the `..` operator was defined as `8`, the number after the `infix` keyword. This is higher than the precedence level of `<$>`, meaning that we do not need to add parentheses:
 
 ```text
 > show <$> 1 .. 5
-  
+
 ["1","2","3","4","5"]
 ```
 
-If we wanted to assign an associativity (left or right) to an infix operator, we could do so with the `infixl` and `infixr` keywords instead.
+If we wanted to assign an _associativity_ (left or right) to an infix operator, we could do so with the `infixl` and `infixr` keywords instead.
 
 ## Filtering Arrays
 
@@ -200,7 +194,7 @@ For example, suppose we wanted to compute an array of all numbers between 1 and 
 ```
 
 X> ## Exercises
-X> 
+X>
 X> 1. (Easy) Use the `map` or `<$>` function to write a function which calculates the squares of an array of numbers.
 X> 1. (Easy) Use the `filter` function to write a function which removes the negative numbers from an array of numbers.
 X> 1. (Medium) Define an infix synonym `<$?>` for `filter`. Rewrite your answer to the previous question to use your new operator. Experiment with the precedence level and associativity of your operator in PSCi.
@@ -211,7 +205,7 @@ Another standard function on arrays is the `concat` function, defined in `Data.A
 
 ```text
 > import Data.Array
-> :type concat 
+> :type concat
 
 forall a. Array (Array a) -> Array a
 
@@ -220,7 +214,7 @@ forall a. Array (Array a) -> Array a
 [1, 2, 3, 4, 5, 6]
 ```
 
-There is a related function called `concatMap` which is like a combination of the `concat` and `map` functions. Where `map` takes a function from values to values (possibly of a different type), `concatMap` takes a function from values to arrays of values. 
+There is a related function called `concatMap` which is like a combination of the `concat` and `map` functions. Where `map` takes a function from values to values (possibly of a different type), `concatMap` takes a function from values to arrays of values.
 
 Let's see it in action:
 
@@ -231,7 +225,7 @@ Let's see it in action:
 forall a b. (a -> Array b) -> Array a -> Array b
 
 > concatMap (\n -> [n, n * n]) (1 .. 5)
-  
+
 [1,1,2,4,3,9,4,16,5,25]
 ```
 
@@ -247,7 +241,7 @@ Suppose we wanted to find the factors of a number `n`. One simple way to do this
 
 We can perform this computation using an array comprehension. We will do so in steps, using PSCi as our interactive development environment.
 
-The first step is to generate an array of pairs of numbers below `n`, which we can do using `concatMap`. 
+The first step is to generate an array of pairs of numbers below `n`, which we can do using `concatMap`.
 
 Let's start by mapping each number to the array `1 .. n`:
 
@@ -265,18 +259,18 @@ We can test our function
 This is not quite what we want. Instead of just returning the second element of each pair, we need to map a function over the inner copy of `1 .. n` which will allow us to keep the entire pair:
 
 ```text
-> let pairs n = concatMap (\i -> map (\j -> [i, j]) (1 .. n)) (1 .. n)
+> let pairs' n = concatMap (\i -> map (\j -> [i, j]) (1 .. n)) (1 .. n)
 
-> pairs 3
+> pairs' 3
 [[1,1],[1,2],[1,3],[2,1],[2,2],[2,3],[3,1],[3,2],[3,3]]
 ```
 
 This is looking better. However, we are generating too many pairs: we keep both [1, 2] and [2, 1] for example. We can exclude the second case by making sure that `j` only ranges from `i` to `n`:
 
 ```text
-> let pairs n = concatMap (\i -> map (\j -> [i, j]) (i .. n)) (1 .. n)
+> let pairs'' n = concatMap (\i -> map (\j -> [i, j]) (i .. n)) (1 .. n)
 
-> pairs 3
+> pairs'' 3
 [[1,1],[1,2],[1,3],[2,2],[2,3],[3,3]]
 ```
 
@@ -285,8 +279,8 @@ Great! Now that we have all of the pairs of potential factors, we can use `filte
 ```text
 > import Data.Foldable
 
-> let factors n = filter (\pair -> product pair == n) (pairs n)
-  
+> let factors n = filter (\pair -> product pair == n) (pairs'' n)
+
 > factors 10
 [[1,10],[2,5]]
 ```
@@ -308,25 +302,25 @@ factors :: Int -> Array (Array Int)
 factors n = filter (\xs -> product xs == n) $ do
   i <- 1 .. n
   j <- i .. n
-  return [i, j]
+  pure [i, j]
 ```
 
 The keyword `do` introduces a block of code which uses do notation. The block consists of expressions of a few types:
 
 - Expressions which bind elements of an array to a name. These are indicated with the backwards-facing arrow `<-`, with a name on the left, and an expression on the right whose type is an array.
-- Expressions which do not bind elements of the array to names. The last line `return [i, j]` is an example of this kind of expression.
+- Expressions which do not bind elements of the array to names. The last line `pure [i, j]` is an example of this kind of expression.
 - Expressions which give names to expressions, using the `let` keyword.
 
-This new notation hopefully makes the structure of the algorithm clearer. If you mentally replace the array `<-` with the word "choose", you might read it as follows: "choose an element `i` between 1 and n, then choose an element `j` between `i` and `n`, and return `[i, j]`".
+This new notation hopefully makes the structure of the algorithm clearer. If you mentally replace the arrow `<-` with the word "choose", you might read it as follows: "choose an element `i` between 1 and n, then choose an element `j` between `i` and `n`, and return `[i, j]`".
 
-Note that the `return` function in the last line is _not_ a keyword. It is a regular function, which can be evaluated in PSCi like any other. However, we have to provide a type:
+In the last line, we use the `pure` function. This function can be evaluated in PSCi, but we have to provide a type:
 
 ```text
-> return [1, 2] :: Array (Array Int)
+> pure [1, 2] :: Array (Array Int)
 [[1, 2]]
 ```
 
-In the case of arrays, `return` simply constructs a singleton array. In fact, we could modify our `factors` function to use this form, instead of using `return`:
+In the case of arrays, `pure` simply constructs a singleton array. In fact, we could modify our `factors` function to use this form, instead of using `pure`:
 
 ```haskell
 factors :: Int -> Array (Array Int)
@@ -340,28 +334,26 @@ and the result would be the same.
 
 ## Guards
 
-One further improvement we can make to the `factors` function is to move the filter inside the array comprehension. This is possible using the `guard` function from the `Control.MonadPlus` module (from the `purescript-control` package):
+One further improvement we can make to the `factors` function is to move the filter inside the array comprehension. This is possible using the `guard` function from the `Control.MonadZero` module (from the `purescript-control` package):
 
 ```haskell
-import Control.MonadPlus (guard)
+import Control.MonadZero (guard)
 
 factors :: Int -> Array (Array Int)
 factors n = do
   i <- 1 .. n
   j <- i .. n
   guard $ i * j == n
-  return [i, j]
+  pure [i, j]
 ```
 
-Just like `return`, the `guard` function is _not_ a keyword. We can apply it like a regular function in PSCi to understand how it works.
-
-The type of the `guard` function is more general than we need here:
+Just like `pure`, we can apply the `guard` function in PSCi to understand how it works. The type of the `guard` function is more general than we need here:
 
 ```text
-> import Control.MonadPlus
+> import Control.MonadZero
 
 > :type guard
-forall m. (MonadPlus m) => Boolean -> m Unit
+forall m. MonadZero m => Boolean -> m Unit
 ```
 
 In our case, we can assume that PSCi reported the following type:
@@ -374,21 +366,20 @@ For our purposes, the following calculations tell us everything we need to know 
 
 ```text
 > import Data.Array
-> length $ guard true
 
+> length $ guard true
 1
 
 > length $ guard false
-  
 0
 ```
 
-That is, if `guard` is passed an expression which evaluates to `true`, then it returns an array with a single element. If the expression evaluates to `false`, then its result is empty. 
+That is, if `guard` is passed an expression which evaluates to `true`, then it returns an array with a single element. If the expression evaluates to `false`, then its result is empty.
 
 This means that if the guard fails, then the current branch of the array comprehension will terminate early with no results. This means that a call to `guard` is equivalent to using `filter` on the intermediate array. Try the two definitions of `factors` to verify that they give the same results.
 
 X> ## Exercises
-X> 
+X>
 X> 1. (Easy) Use the `factors` function to define a function `isPrime` which tests if its integer argument is prime or not.
 X> 1. (Medium) Write a function which uses do notation to find the _cartesian product_ of two arrays, i.e. the set of all pairs of elements `a`, `b`, where `a` is an element of the first array, and `b` is an element of the second.
 X> 1. (Medium) A _Pythagorean triple_ is an array of numbers `[a, b, c]` such that `a² + b² = c²`. Use the `guard` function in an array comprehension to write a function `triples` which takes a number `n` and calculates all Pythagorean triples whose components are less than `n`. Your function should have type `Int -> Array (Array Int)`.
@@ -408,7 +399,7 @@ forall a b f. (Foldable f) => (b -> a -> b) -> b -> f a -> b
 
 > :type foldr
 forall a b f. (Foldable f) => (a -> b -> b) -> b -> f a -> b
-``` 
+```
 
 These types are actually more general than we are interested in right now. For the purposes of this chapter, we can assume that PSCi had given the following (more specific) answer:
 
@@ -441,23 +432,23 @@ In this case, it didn't matter whether we used `foldl` or `foldr`, because the r
 Let's write an example where the choice of folding function does matter, in order to illustrate the difference. Instead of the addition function, let's use string concatenation to build a string:
 
 ```text
-> foldl (\acc n -> acc ++ show n) "" [1,2,3,4,5]
+> foldl (\acc n -> acc <> show n) "" [1,2,3,4,5]
 "12345"
 
-> foldr (\n acc -> acc ++ show n) "" [1,2,3,4,5]
+> foldr (\n acc -> acc <> show n) "" [1,2,3,4,5]
 "54321"
 ```
 
 This illustrates the difference between the two functions. The left fold expression is equivalent to the following application:
 
 ```text
-((((("" ++ show 1) ++ show 2) ++ show 3) ++ show 4) ++ show 5)
+((((("" <> show 1) <> show 2) <> show 3) <> show 4) <> show 5)
 ```
 
 whereas the right fold is equivalent to this:
 
 ```text
-((((("" ++ show 5) ++ show 4) ++ show 3) ++ show 2) ++ show 1)
+((((("" <> show 5) <> show 4) <> show 3) <> show 2) <> show 1)
 ```
 
 ## Tail Recursion
@@ -472,14 +463,14 @@ It is easy to verify this problem, with the following code in PSCi:
 
 > f 10
 10
-  
+
 > f 10000
 RangeError: Maximum call stack size exceeded
 ```
 
 This is a problem. If we are going to adopt recursion as a standard technique from functional programming, then we need a way to deal with possibly unbounded recursion.
 
-PureScript provides a partial solution to this problem in the form of _tail recursion optimization_. 
+PureScript provides a partial solution to this problem in the form of _tail recursion optimization_.
 
 _Note_: more complete solutions to the problem can be implemented in libraries using so-called _trampolining_, but that is beyond the scope of this chapter. The interested reader can consult the documentation for the `purescript-free` and `purescript-tailrec` packages.
 
@@ -501,12 +492,13 @@ Notice that the recursive call to `fact` is the last thing that happens in this 
 
 One common way to turn a function which is not tail recursive into a tail recursive function is to use an _accumulator parameter_. An accumulator parameter is an additional parameter which is added to a function which _accumulates_ a return value, as opposed to using the return value to accumulate the result.
 
-For example, consider this array recursion which reverses the input array:
+For example, consider this array recursion which reverses the input array by appending elements at the head of the input array to the end of the result.
 
 ```haskell
 reverse :: forall a. Array a -> Array a
 reverse [] = []
-reverse xs = reverse (tail xs) ++ [head xs]
+reverse xs = snoc (reverse (unsafePartial tail xs))
+                  (unsafePartial head xs)
 ```
 
 This implementation is not tail recursive, so the generated JavaScript will cause a stack overflow when executed on a large input array. However, we can make it tail recursive, by introducing a second function argument to accumulate the result instead:
@@ -516,12 +508,13 @@ reverse :: forall a. Array a -> Array a
 reverse = reverse' []
   where
   reverse' acc [] = acc
-  reverse' acc xs = reverse' (head xs : acc) (tail xs)
+  reverse' acc xs = reverse' (unsafePartial head xs : acc)
+                             (unsafePartial tail xs)
 ```
 
 In this case, we delegate to the helper function `reverse'`, which performs the heavy lifting of reversing the array. Notice though that the function `reverse'` is tail recursive - its only recursive call is in the last case, and is in tail position. This means that the generated code will be a _while loop_, and will not blow the stack for large inputs.
 
-To understand the second implementation of `reverse`, note that the helper function `reverse'` essentially uses the accumulator parameter to maintain an additional piece of state - the partially constructed result. The result starts out empty, and grows by one element for every element in the input array. However, because later elements are added at the front of the array, the result is the original array in reverse! 
+To understand the second implementation of `reverse`, note that the helper function `reverse'` essentially uses the accumulator parameter to maintain an additional piece of state - the partially constructed result. The result starts out empty, and grows by one element for every element in the input array. However, because later elements are added at the front of the array, the result is the original array in reverse!
 
 Note also that while we might think of the accumulator as "state", there is no direct mutation going on. The accumulator is an immutable array, and we simply use function arguments to thread the state through the computation.
 
@@ -534,32 +527,32 @@ For example, the `reverse` example can be written as a fold in at least two ways
 ```text
 > import Data.Foldable
 > let reverse :: forall a. Array a -> Array a
-      reverse = foldr (\x xs -> xs ++ [x]) []
-  
+      reverse = foldr (\x xs -> xs <> [x]) []
+
 > reverse [1, 2, 3]
-  
+
 [3,2,1]
 ```
 
 Writing `reverse` in terms of `foldl` will be left as an exercise for the reader.
 
 X> ## Exercises
-X> 
-X> 1. (Easy) Use `foldl` to test whether an array of boolean values are all true. 
+X>
+X> 1. (Easy) Use `foldl` to test whether an array of boolean values are all true.
 X> 2. (Medium) Characterize those arrays `xs` for which the function `foldl (==) false xs` returns true.
 X> 3. (Medium) Rewrite the following function in tail recursive form using an accumulator parameter:
-X> 
+X>
 X>     ```haskell
 X>     import Prelude
 X>     import Data.Array.Unsafe (head, tail)
 X>     
 X>     count :: forall a. (a -> Boolean) -> Array a -> Int
 X>     count _ [] = 0
-X>     count p xs = if p (head xs) 
-X>                  then count p (tail xs) + 1
-X>                  else count p (tail xs)
+X>     count p xs = if p (unsafePartial head xs)
+X>                    then count p (unsafePartial tail xs) + 1
+X>                    else count p (unsafePartial tail xs)
 X>     ```
-X> 
+X>
 X> 4. (Medium) Write `reverse` in terms of `foldl`.
 
 ## A Virtual Filesystem
@@ -633,7 +626,7 @@ Let's try this function in PSCi:
 > import Data.Path
 
 > allFiles root
-  
+
 [/,/bin/,/bin/cp,/bin/ls,/bin/mv,/etc/,/etc/hosts, ...]
 ```
 
@@ -653,11 +646,11 @@ allFiles' file = file : do
 Try out the new version in PSCi - you should get the same result. I'll let you decide which version you find clearer.
 
 X> ## Exercises
-X> 
+X>
 X> 1. (Easy) Write a function `onlyFiles` which returns all _files_ (not directories) in all subdirectories of a directory.
-X> 1. (Medium) Write a fold to determine the largest and smallest files in the filesystem. 
+X> 1. (Medium) Write a fold to determine the largest and smallest files in the filesystem.
 X> 1. (Difficult) Write a function `whereIs` to search for a file by name. The function should return a value of type `Maybe Path`, indicating the directory containing the file, if it exists. It should behave as follows:
-X> 
+X>
 X>     ```text
 X>     > whereIs "/bin/ls"
 X>     Just (/bin/)
@@ -665,10 +658,9 @@ X>
 X>     > whereIs "/bin/cat"
 X>     Nothing
 X>     ```
-X> 
+X>
 X>     _Hint_: Try to write this function as an array comprehension using do notation.
 
 ## Conclusion
 
 In this chapter, we covered the basics of recursion in PureScript, as a means of expressing algorithms concisely. We also introduced user-defined infix operators, standard functions on arrays such as maps, filters and folds, and array comprehensions which combine these ideas. Finally, we showed the importance of using tail recursion in order to avoid stack overflow errors, and how to use accumulator parameters to convert functions to tail recursive form.
-

@@ -25,13 +25,15 @@ The module `Data.Hashable` imports several modules provided by these Bower packa
 ```haskell
 module Data.Hashable where
 
-import Data.Maybe
-import Data.Tuple
-import Data.Either
-import Data.String
-import Data.Function
-import Data.Foldable (foldMap)
-import Data.Monoid (Monoid)
+import Prelude
+
+import Data.Char (toCharCode)
+import Data.Either (Either(..))
+import Data.Foldable (foldl)
+import Data.Function (on)
+import Data.Maybe (Maybe(..))
+import Data.String (toCharArray)
+import Data.Tuple (Tuple(..))
 ```
 
 ## Show Me!
@@ -45,9 +47,9 @@ class Show a where
   show :: a -> String
 ```
 
-This code declares a new _type class_ called `Show`, which is parameterized by the type variable `a`. 
+This code declares a new _type class_ called `Show`, which is parameterized by the type variable `a`.
 
-A type class _instance_ contains implementations of the functions defined in a type class, specialized to a particular type. 
+A type class _instance_ contains implementations of the functions defined in a type class, specialized to a particular type.
 
 For example, here is the definition of the `Show` type class instance for `Boolean` values, taken from the Prelude:
 
@@ -62,16 +64,15 @@ This code declares a type class instance called `showBoolean` - in PureScript, t
 We can try out the `Show` type class in PSCi, by showing a few values with different types:
 
 ```text
-> show true
+> import Prelude
 
+> show true
 "true"
 
 > show 1.0
-
-"1"
+"1.0"
 
 > show "Hello World"
-
 "\"Hello World\""
 ```
 
@@ -79,12 +80,14 @@ These examples demonstrate how to `show` values of various primitive types, but 
 
 ```text
 > import Data.Tuple
+
 > show $ Tuple 1 true
-"Tuple (1) (true)"
+"(Tuple 1 true)"
 
 > import Data.Maybe
+
 > show $ Just "testing"
-"Just (\"testing\")"
+"(Just \"testing\")"
 ```
 
 If we try to show a value of type `Data.Either`, we get an interesting error message:
@@ -92,32 +95,35 @@ If we try to show a value of type `Data.Either`, we get an interesting error mes
 ```text
 > import Data.Either
 > show $ Left 10
-  
-Error in declaration it
-No instance found for Prelude.Show (Data.Either.Either Prim.String _8)
+
+No type class instance was found for
+
+  Data.Show.Show t0
+
+The instance head contains unknown type variables. Consider adding a type annotation.
 ```
 
-The problem here is not that there is no `Show` instance for the type we intended to `show`, but rather that PSCi was unable to infer the type. This is indicated by the _unknown type_ `_8` in the error message.
+The problem here is not that there is no `Show` instance for the type we intended to `show`, but rather that PSCi was unable to infer the type. This is indicated by the _unknown type_ `t0` in the error message.
 
 We can annotate the expression with a type, using the `::` operator, so that PSCi can choose the correct type class instance:
 
 ```text
 > show (Left 10 :: Either Int String)
-  
-"Left (10)"
+"(Left 10)"
 ```
 
 Some types do not have a `Show` instance defined at all. One example of this is the function type `->`. If we try to `show` a function from `Int` to `Int`, we get an appropriate error message from the type checker:
 
 ```text
 > show $ \n -> n + 1
-  
-Error in declaration it
-No instance found for Prelude.Show (Prim.Int -> Prim.Int)
+
+No type class instance was found for
+
+  Data.Show.Show (Int -> Int)
 ```
 
 X> ## Exercises
-X> 
+X>
 X> 1. (Easy) Use the `showShape` function from the previous chapter to define a `Show` instance for the `Shape` type.
 
 ## Common Type Classes
@@ -172,17 +178,19 @@ LT
 LT
 ```
 
-### Num
+### Field
 
-The `Num` type class identifies those types which support numeric operators such as addition, subtraction, multiplication and division. It is provided to abstract over those operators, so that they can be reused where appropriate.
+The `Field` type class identifies those types which support numeric operators such as addition, subtraction, multiplication and division. It is provided to abstract over those operators, so that they can be reused where appropriate.
 
-_Note_: Just like the `Eq` and `Ord` type classes, the `Num` type class has special support in the PureScript compiler, so that simple expressions such as `1 + 2 * 3` get translated into simple JavaScript, as opposed to function calls which dispatch based on a type class implementation.
+_Note_: Just like the `Eq` and `Ord` type classes, the `Field` type class has special support in the PureScript compiler, so that simple expressions such as `1 + 2 * 3` get translated into simple JavaScript, as opposed to function calls which dispatch based on a type class implementation.
 
 ```haskell
-class (DivisionRing a) <= Num a
+class EuclideanRing a <= Field a
 ```
 
-The `Num` type class is composed from several more general _superclasses_. This allows us to talk abstractly about types which support some but not all of the `Num` operations. For example, a type of natural numbers would be closed under addition and multiplication, but not necessarily under subtraction, so that type might have an instance of the `Semiring` class (which is a superclass of `Num`), but not an instance of `Num`. Superclasses will be explained later in this chapter, but the full numeric type class hierarchy is beyond the scope of this chapter.
+The `Field` type class is composed from several more general _superclasses_. This allows us to talk abstractly about types which support some but not all of the `Field` operations. For example, a type of natural numbers would be closed under addition and multiplication, but not necessarily under subtraction, so that type might have an instance of the `Semiring` class (which is a superclass of `Num`), but not an instance of `Ring` or `Field`.
+
+Superclasses will be explained later in this chapter, but the full numeric type class hierarchy is beyond the scope of this chapter. The interested reader is encouraged to read the documentation for the superclasses of `Field` in `purescript-prelude`.
 
 ### Semigroups and Monoids
 
@@ -195,26 +203,26 @@ class Semigroup a where
 
 Strings form a semigroup under regular string concatenation, and so do arrays. Several other standard instances are provided by the `purescript-monoid` package.
 
-The `++` concatenation operator, which we have already seen, is provided as an alias for `append`. `<>` is another alias for `append`.
+The `<>` concatenation operator, which we have already seen, is provided as an alias for `append`.
 
 The `Monoid` type class (provided by the `purescript-monoid` package) extends the `Semigroup` type class with the concept of an empty value, called `mempty`:
 
 ```haskell
-class (Semigroup m) <= Monoid m where
+class Semigroup m <= Monoid m where
   mempty :: m
 ```
 
-Again, strings and arrays are simple examples of monoids. 
+Again, strings and arrays are simple examples of monoids.
 
 A `Monoid` type class instance for a type describes how to _accumulate_ a result with that type, by starting with an "empty" value, and combining new results. For example, we can write a function which concatenates an array of values in some monoid by using a fold. In PSCi:
 
 ```haskell
 > import Data.Monoid
 > import Data.Foldable
-  
+
 > foldl append mempty ["Hello", " ", "World"]  
 "Hello World"
-  
+
 > foldl append mempty [[1, 2, 3], [4, 5], [6]]
 [1,2,3,4,5,6]
 ```
@@ -233,12 +241,12 @@ The type signatures for the functions belonging to the `Foldable` class are a li
 class Foldable f where
   foldr :: forall a b. (a -> b -> b) -> b -> f a -> b
   foldl :: forall a b. (b -> a -> b) -> b -> f a -> b
-  foldMap :: forall a m. (Monoid m) => (a -> m) -> f a -> m
+  foldMap :: forall a m. Monoid m => (a -> m) -> f a -> m
 ```
 
 It is instructive to specialize to the case where `f` is the array type constructor. In this case, we can replace `f a` with `Array a` for any a, and we notice that the types of `foldl` and `foldr` become the types that we saw when we first encountered folds over arrays.
 
-What about `foldMap`? Well, that becomes `forall a m. (Monoid m) => (a -> m) -> Array a -> m`. This type signature says that we can choose any type `m` for our result type, as long as that type is an instance of the `Monoid` type class. If we can provide a function which turns our array elements into values in that monoid, then we can accumulate over our array using the structure of the monoid, and return a single value.
+What about `foldMap`? Well, that becomes `forall a m. Monoid m => (a -> m) -> Array a -> m`. This type signature says that we can choose any type `m` for our result type, as long as that type is an instance of the `Monoid` type class. If we can provide a function which turns our array elements into values in that monoid, then we can accumulate over our array using the structure of the monoid, and return a single value.
 
 Let's try out `foldMap` in PSCi:
 
@@ -249,64 +257,65 @@ Let's try out `foldMap` in PSCi:
 "12345"
 ```
 
-Here, we choose the monoid for strings, which concatenates strings together, and the `show` function which renders an `Int` as a string. Then, passing in an array of integers, we see that the results of `show`ing each integer have been concatenated into a single String.
+Here, we choose the monoid for strings, which concatenates strings together, and the `show` function which renders an `Int` as a `String`. Then, passing in an array of integers, we see that the results of `show`ing each integer have been concatenated into a single `String`.
 
 But arrays are not the only types which are foldable. `purescript-foldable-traversable` also defines `Foldable` instances for types like `Maybe` and `Tuple`, and other libraries like `purescript-lists` define `Foldable` instances for their own data types. `Foldable` captures the notion of an _ordered container_.
 
 ### Functor, and Type Class Laws
 
-The Prelude also defines a collection of type classes which enable a functional style of programming with side-effects in PureScript: `Functor`, `Applicative` and `Monad`. We will cover these abstractions later in the book, but for now, let's look at the definition of the `Functor` type class, which we have seen already in the form of the "lifting operator" `<$>`:
+The Prelude also defines a collection of type classes which enable a functional style of programming with side-effects in PureScript: `Functor`, `Applicative` and `Monad`. We will cover these abstractions later in the book, but for now, let's look at the definition of the `Functor` type class, which we have seen already in the form of the `map` function:
 
 ```haskell
 class Functor f where
   map :: forall a b. (a -> b) -> f a -> f b
 ```
 
-The operator `<$>`, which is an alias for the `map` function, allows a function to be "lifted" over a data structure. The precise definition of the word "lifted" here depends on the data structure in question, but we have already seen its behavior for some simple types:
+The `map` function (and its alias `<$>`) allows a function to be "lifted" over a data structure. The precise definition of the word "lifted" here depends on the data structure in question, but we have already seen its behavior for some simple types:
 
 ```text
-> import Data.Array
-> (\n -> n < 3) <$> [1, 2, 3, 4, 5]
-  
+> import Prelude
+
+> map (\n -> n < 3) [1, 2, 3, 4, 5]
 [true, true, false, false, false]
 
 > import Data.Maybe
-> Data.String.length <$> Just "testing"
-  
-Just (7)
+> import Data.String (length)
+
+> map length (Just "testing")
+(Just 7)
 ```
 
-How can we understand the meaning of the `<$>` operator, when it acts on many different structures, each in a different way?
+How can we understand the meaning of the `map` function, when it acts on many different structures, each in a different way?
 
-Well, we can build an intuition that the `<$>` operator applies the function it is given to each element of a container, and builds a new container from the results, with the same shape as the original. But how do we make this concept precise?
+Well, we can build an intuition that the `map` function applies the function it is given to each element of a container, and builds a new container from the results, with the same shape as the original. But how do we make this concept precise?
 
 Type class instances for `Functor` are expected to adhere to a set of _laws_, called the _functor laws_:
 
-- `id <$> xs = xs`
-- `g <$> (f <$> xs) = (g <<< f) <$> xs`
+- `map id xs = xs`
+- `map g (map f xs) = map (g <<< f) xs`
 
 The first law is the _identity law_. It states that lifting the identity function over a structure just returns the original structure. This makes sense since the identity function does not modify its input.
 
 The second law is the _composition law_. It states that mapping one function over a structure, and then mapping a second, is the same thing as mapping the composition of the two functions over the structure.
 
-Whatever "lifting" means in the general sense, it should be true that any reasonable definition of lifting a function over a data structure should obey these rules. 
+Whatever "lifting" means in the general sense, it should be true that any reasonable definition of lifting a function over a data structure should obey these rules.
 
 Many standard type classes come with their own set of similar laws. The laws given to a type class give structure to the functions of that type class and allow us to study its instances in generality. The interested reader can research the laws ascribed to the standard type classes that we have seen already.
 
 X> ## Exercises
-X> 
+X>
 X> 1. (Easy) The following newtype represents a complex number:
-X> 
+X>
 X>     ```haskell
-X>     newtype Complex = Complex 
+X>     newtype Complex = Complex
 X>       { real :: Number
-X>       , imaginary :: Number 
+X>       , imaginary :: Number
 X>       }
 X>     ```
 X>       
 X>     Define `Show` and `Eq` instances for `Complex`.
 X> 1. (Medium) The following type defines a type of non-empty arrays of elements of type `a`:
-X> 
+X>
 X>     ```haskell
 X>     data NonEmpty a = NonEmpty a (Array a)
 X>     ```
@@ -320,7 +329,7 @@ X> 1. (Difficult) Write a `Foldable` instance for `NonEmpty`. _Hint_: reuse the 
 Types of functions can be constrained by using type classes. Here is an example: suppose we want to write a function which tests if three values are equal, by using equality defined using an `Eq` type class instance.
 
 ```haskell
-threeAreEqual :: forall a. (Eq a) => a -> a -> a -> Boolean
+threeAreEqual :: forall a. Eq a => a -> a -> a -> Boolean
 threeAreEqual a1 a2 a3 = a1 == a2 && a2 == a3
 ```
 
@@ -332,36 +341,27 @@ Constrained types can contain several type class instances, and the types of the
 
 ```haskell
 showCompare :: forall a. (Ord a, Show a) => a -> a -> String
-showCompare a1 a2 | a1 < a2 = 
-  show a1 ++ " is less than " ++ show a2
-showCompare a1 a2 | a1 > a2 = 
-  show a1 ++ " is greater than " ++ show a2
-showCompare a1 a2 = 
-  show a1 ++ " is equal to " ++ show a2
+showCompare a1 a2 | a1 < a2 =
+  show a1 <> " is less than " <> show a2
+showCompare a1 a2 | a1 > a2 =
+  show a1 <> " is greater than " <> show a2
+showCompare a1 a2 =
+  show a1 <> " is equal to " <> show a2
 ```
 
-There is an important restriction which applies when using functions which are constrained by a type class: the PureScript compiler will not infer a type which is constrained - a type annotation must be provided.
+The PureScript compiler will try to infer constrained types when a type annotation is not provided. This can be useful if we want to use the most general type possible for a function.
 
-To see this, try using one of the standard type classes like `Num` in PSCi:
+To see this, try using one of the standard type classes like `Semiring` in PSCi:
 
 ```text
 > import Prelude
+
 > :type \x -> x + x
-
-Error in declaration it
-No instance found for Prelude.Num _2
+forall a. Semiring a => a -> a
 ```
 
-Here, we try to find the type of a function which doubles a number by using the type's `Num` instance, but PSCi will not infer a constrained type for the function when the type of `x` is unknown, so PSCi reports that it was unable to find a type class instance for an unknown type.
+Here, we might have annotated this function as `Int -> Int`, or `Number -> Number`, but PSCi shows us that the most general type works for any `Semiring`, allowing us to use our function with both `Int`s and `Number`s.
 
-Instead, we have to instruct the type checker by indicating that, for example, `x` represents a number:
-
-```text
-> :type \x -> x + (x :: Number)
-
-Prim.Number -> Prim.Number
-```
-  
 ## Overlapping Instances
 
 PureScript has another rule regarding type class instances, called the _overlapping instances rule_. Whenever a type class instance is required at a function call site, PureScript will use the information inferred by the type checker to choose the correct instance. At that time, there should be exactly one appropriate instance for that type. If there are multiple valid instances, the compiler will issue a warning.
@@ -377,7 +377,7 @@ data T = T
 
 instance showT1 :: Show T where
   show _ = "Instance 1"
-  
+
 instance showT2 :: Show T where
   show _ = "Instance 2"
 ```
@@ -385,13 +385,12 @@ instance showT2 :: Show T where
 This module will compile with no warnings. However, if we _use_ `show` at type `T` (requiring the compiler to to find a `Show` instance), the overlapping instances rule will be enforced, resulting in a warning:
 
 ```text
-Compiling Overlapped
-Overlapping instances found for Prelude.Show Overlapped.T
+Overlapping instances found for Prelude.Show T
 ```
 
 The overlapping instances rule is enforced so that automatic selection of type class instances is a predictable process. If we allowed two type class instances for a type to exist, then either could be chosen depending on the order of module imports, and that could lead to unpredictable behavior of the program at runtime, which is undesirable.
 
-If it is truly the case that there are two valid type class instances for a type, satisfying the appropriate laws, then a common approach is to define newtypes which wrap the existing type. Since different newtypes are allowed to have different type class instances under the overlapping instances rule, there is no longer an issue. This approach is taken in PureScript's standard libraries, for example in `purescript-monoids`, where the `Maybe a` type has multiple valid instances for the `Monoid` type class. 
+If it is truly the case that there are two valid type class instances for a type, satisfying the appropriate laws, then a common approach is to define newtypes which wrap the existing type. Since different newtypes are allowed to have different type class instances under the overlapping instances rule, there is no longer an issue. This approach is taken in PureScript's standard libraries, for example in `purescript-monoids`, where the `Maybe a` type has multiple valid instances for the `Monoid` type class.
 
 ## Instance Dependencies
 
@@ -400,26 +399,26 @@ Just as the implementation of functions can depend on type class instances using
 For example, consider the `Show` type class. We can write a type class instance to `show` arrays of elements, as long as we have a way to `show` the elements themselves:
 
 ```haskell
-instance showArray :: (Show a) => Show (Array a) where
+instance showArray :: Show a => Show (Array a) where
   ...
 ```
 
-This type class instance is provided in the PureScript Prelude.
+This type class instance is provided in the `purescript-prelude` library.
 
 When the program is compiled, the correct type class instance for `Show` is chosen based on the inferred type of the argument to `show`. The selected instance might depend on many such instance relationships, but this complexity is not exposed to the developer.
 
 X> ## Exercises
-X> 
+X>
 X> 1. (Easy) Write an `Eq` instance for the type `NonEmpty a` which reuses the instances for `Eq a` and `Eq (Array a)`.
 X> 1. (Medium) Given any type `a` with an instance of `Ord`, we can add a new "infinite" value which is greater than any other value:
-X> 
+X>
 X>     ```haskell
 X>     data Extended a = Finite a | Infinite
 X>     ```
 X>         
 X>     Write an `Ord` instance for `Extended a` which reuses the `Ord` instance for `a`.
 X> 1. (Difficult) Given an type constructor `f` which defines an ordered container (and so has a `Foldable` instance), we can create a new container type which includes an extra element at the front:
-X> 
+X>
 X>     ```haskell
 X>     data OneMore f a = OneMore a (f a)
 X>     ```
@@ -427,7 +426,7 @@ X>
 X>     The container `OneMore f` is also has an ordering, where the new element comes before any element of `f`. Write a `Foldable` instance for `OneMore f`:
 X>   
 X>     ```haskell
-X>     instance foldableOneMore :: (Foldable f) => Foldable (OneMore f) where
+X>     instance foldableOneMore :: Foldable f => Foldable (OneMore f) where
 X>       ...
 X>     ```
 
@@ -440,18 +439,18 @@ Let's see an example of a type class with two type arguments.
 ```haskell
 module Stream where
 
-import Data.Maybe
-import Data.Tuple
-import Data.String
+import Data.Array as Array
+import Data.Maybe (Maybe)
+import Data.String as String
 
 class Stream list element where
   uncons :: list -> Maybe { head :: element, tail :: list }
 
 instance streamArray :: Stream (Array a) a where
-  uncons = Data.Array.uncons
+  uncons = Array.uncons
 
 instance streamString :: Stream String Char where
-  uncons = Data.String.uncons
+  uncons = String.uncons
 ```
 
 The `Stream` module defines a class `Stream` which identifies types which look like streams of elements, where elements can be pulled from the front of the stream using the `uncons` function.
@@ -460,11 +459,11 @@ Note that the `Stream` type class is parameterized not only by the type of the s
 
 The module defines two type class instances: an instance for arrays, where `uncons` removes the head element of the array using pattern matching, and an instance for String, which removes the first character from a String.
 
-We can write functions which work over arbitrary streams. For example, here is a function which accumulates a result in some monoid based on the elements of a stream:
+We can write functions which work over arbitrary streams. For example, here is a function which accumulates a result in some `Monoid` based on the elements of a stream:
 
 ```haskell
 import Prelude
-import Data.Monoid
+import Data.Monoid (class Monoid, mempty)
 
 foldStream :: forall l e m. (Stream l e, Monoid m) => (e -> m) -> l -> m
 foldStream f list =
@@ -479,51 +478,44 @@ Try using `foldStream` in PSCi for different types of `Stream` and different typ
 
 We can even define type classes with zero type arguments! These correspond to compile-time assertions about our functions, allowing us to track global properties of our code in the type system.
 
-For example, suppose we want to track the use of partial functions using the type system. We can define a type class `Partial` with no type arguments, and annotate all partial functions with a `Partial` constraint:
+An important example is the `Partial` class which we saw earlier when discussing partial functions. We've seen the partial functions `head` and `tail`, defined in `Data.Array.Partial` already:
 
 ```haskell
-module Partial where
+head :: forall a. Partial => Array a -> a
 
-class Partial
-
-head :: forall a. (Partial) => Array a -> a
-head = Data.Array.Unsafe.head
-
-tail :: forall a. (Partial) => Array a -> Array a
-tail = Data.Array.Unsafe.tail
+tail :: forall a. Partial => Array a -> Array a
 ```
 
-Note that we do not define an instance for the `Partial` type class! Doing so would defeat its purpose: with this definition, attempting to use the `head` function will result in a type error:
+Note that there is no instance defined for the `Partial` type class! Doing so would defeat its purpose: attempting to use the `head` function directly will result in a type error:
 
 ```text
-> Partial.head [1, 2, 3]
-  
-Error in declaration it
-No instance found for Partial.Partial 
+> head [1, 2, 3]
+
+No type class instance was found for
+
+  Prim.Partial
 ```
 
-A user of this library can republish the `Partial` constraint for any functions making use of partial functions:
+Instead, we can republish the `Partial` constraint for any functions making use of partial functions:
 
 ```haskell
-secondElement :: forall a. (Partial) => Array a -> a
+secondElement :: forall a. Partial => Array a -> a
 secondElement xs = head (tail xs)
 ```
 
-It would also be possible to provide an unsafe function to remove the `Partial` constraint, allowing a partial function to be used in a context where partiality would normally not be allowed by the typechecker:
+We've already seen the `unsafePartial` function, which allows us to treat a partial function as a regular function (unsafely). This function is defined in the `Partial.Unsafe` module:
 
 ```haskell
-unsafePartial :: forall a. (forall dummy. (Partial) => a) -> a
+unsafePartial :: forall a. (Partial => a) -> a
 ```
 
 Note that the `Partial` constraint appears _inside the parentheses_ on the left of the function arrow, but not in the outer `forall`. That is, `unsafePartial` is a function from partial values to regular values.
-
-`unsafePartial` might be implemented using the foreign function interface.
 
 ## Superclasses
 
 Just as we can express relationships between type class instances by making an instance dependent on another instance, we can express relationships between type classes themselves using so-called _superclasses_.
 
-We say that one type class is a superclass of another if every instance of the second class is required to be an instance of the first, and we indicate a superclass relationship in the class definition by using a backwards facing double arrow. 
+We say that one type class is a superclass of another if every instance of the second class is required to be an instance of the first, and we indicate a superclass relationship in the class definition by using a backwards facing double arrow.
 
 We've already seen some examples of superclass relationships: the `Eq` class is a superclass of `Ord`, and the `Semigroup` class is a superclass of `Monoid`. For every type class instance of the `Ord` class, there must be a corresponding `Eq` instance for the same type. This makes sense, since in many cases, when the `compare` function reports that two values are incomparable, we often want to use the `Eq` class to determine if they are in fact equal.
 
@@ -532,11 +524,11 @@ In general, it makes sense to define a superclass relationship when the laws for
 Another reason to define a superclass relationship is in the case where there is a clear "is-a" relationship between the two classes. That is, every member of the subclass _is a_ member of the superclass as well.
 
 X> ## Exercises
-X> 
+X>
 X> 1. (Medium) The `Action` class is a multi-parameter type class which defines an action of one type on another:
-X> 
+X>
 X>     ```haskell
-X>     class (Monoid m) <= Action m a where
+X>     class Monoid m <= Action m a where
 X>       act :: m -> a -> a
 X>     ```
 X>           
@@ -545,24 +537,24 @@ X>
 X>     ```haskell
 X>     instance repeatAction :: Action Int String where
 X>       act 0 _ = ""
-X>       act n s = s ++ act (n - 1) s
+X>       act n s = s <> act (n - 1) s
 X>     ```
-X> 
+X>
 X>     Note that `act 2 s` is equal to the combination `act 1 s <> act 1 s`, and `1 <> 1 = 2` in the monoid of additive integers.
 X>   
 X>     Write down a reasonable set of laws which describe how the `Action` class should interact with the `Monoid` class. _Hint_: how do we expect `mempty` to act on elements? What about `append`?
 X> 1. (Medium) Write an instance `Action m a => Action m (Array a)`, where the action on arrays is defined by acting on the elements independently.
 X> 1. (Difficult) Given the following newtype, write an instance for `Action m (Self m)`, where the monoid `m` acts on itself using `append`:
-X> 
+X>
 X>     ```haskell
 X>     newtype Self m = Self m
 X>     ```
-X> 
-X> 1. (Medium) Define a nullary type class `Unsafe` and use it to define a version of the `unsafeIndex` function from the `Data.Array.Unsafe` module, which uses your constraint to express its lack of type-safety. Use your function to define a function `last` which chooses the last element of an array, and which preserves the `Unsafe` constraint.
+X>
+X> 1. (Medium) Define a partial function which finds the maximum of a non-empty array of integers. Your function should have type `Partial => Array Int -> Int`. Test out your function in PSCi using `unsafePartial`. _Hint_: Use the `maximum` function from `Data.Foldable`.
 
 ## A Type Class for Hashes
 
-In the last section, we will use the work of the rest of the chapter to practical effect, to create a library for hashing data structures.
+In the last section of this chapter, we will use the lessons from the rest of the chapter to create a library for hashing data structures.
 
 Note that this library is for demonstration purposes only, and is not intended to provide a robust hashing mechanism.
 
@@ -577,32 +569,29 @@ The first property looks a lot like a law for a type class, whereas the second p
 newtype HashCode = HashCode Int
 
 hashCode :: Int -> HashCode
-hashCode h = HashCode (h `mod` 65536)
+hashCode h = HashCode (h `mod` 65535)
 
-class (Eq a) <= Hashable a where
-  hash :: a -> HashCode 
+class Eq a <= Hashable a where
+  hash :: a -> HashCode
 ```
 
 with the associated law that `a == b` implies `hash a == hash b`.
 
 We'll spend the rest of this section building a library of instances and functions associated with the `Hashable` type class.
 
-We will need a way to combine hash codes in a deterministic way. The word "combine" should lead us to think of the standard type class for combining values: `Semigroup`. We can define `Semigroup` and `Monoid` instances for our `HashCode` newtype as follows:
+We will need a way to combine hash codes in a deterministic way:
 
 ```haskell
-instance semigroupHashCode :: Semigroup HashCode where
-  append (HashCode h1) (HashCode h2) = hashCode (73 * h1 + 51 * h2)
-
-instance monoidHashCode :: Monoid HashCode where
-  mempty = hashCode 0
+combineHashes :: HashCode -> HashCode -> HashCode
+combineHashes (HashCode h1) (HashCode h2) = hashCode (73 * h1 + 51 * h2)
 ```
 
-The `Semigroup` instance will mix two hash codes and distribute the result over the interval 0-65535.
+The `combineHashes` fybctuib will mix two hash codes and redistribute the result over the interval 0-65535.
 
 Let's write a function which uses the `Hashable` constraint to restrict the types of its inputs. One common task which requires a hashing function is to determine if two values hash to the same hash code. The `hashEqual` relation provides such a capability:
 
 ```haskell
-hashEqual :: forall a. (Hashable a) => a -> a -> Boolean
+hashEqual :: forall a. Hashable a => a -> a -> Boolean
 hashEqual = eq `on` hash
 ```
 
@@ -630,12 +619,12 @@ instance hashChar :: Hashable Char where
   hash = hash <<< toCharCode
 ```
 
-To define an instance for arrays, we can appeal to the fact that `HashCode` forms a `Monoid`, and use the `foldMap` function to combine the hashes of all array elements:
+To define an instance for arrays, we can `map` the `hash` function over the elements of the array (if the element type is also an instance of `Hashable`) and then perform a left fold over the resulting hashes using the `combineHashes` function:
 
 ```haskell
-instance hashArray :: (Hashable a) => Hashable (Array a) where
-  hash = foldMap hash
-``` 
+instance hashArray :: Hashable a => Hashable (Array a) where
+  hash = foldl combineHashes (hashCode 0) <<< map hash
+```
 
 Notice how we build up instances using the simpler instances we have already written. Let's use our new `Array` instance to define an instance for `String`s, by turning a `String` into an array of `Char`s:
 
@@ -651,11 +640,11 @@ What about some more interesting types? To prove the type class law for the `Arr
 The source code for this chapter includes several other examples of `Hashable` instances, such as instances for the `Maybe` and `Tuple` type.
 
 X> ## Exercises
-X> 
+X>
 X> 1. (Easy) Use PSCi to test the hash functions for each of the defined instances.
 X> 1. (Medium) Use the `hashEqual` function to write a function which tests if an array has any duplicate elements, using hash-equality as an approximation to value equality. Remember to check for value equality using `==` if a duplicate pair is found. _Hint_: the `nubBy` function in `Data.Array` should make this task much simpler.
-X> 1. (Medium) Write a `Hashable` instance for the following newtype which upholds the type class law:
-X> 
+X> 1. (Medium) Write a `Hashable` instance for the following newtype which satisfies the type class law:
+X>
 X>     ```haskell
 X>     newtype Hour = Hour Int
 X>     
@@ -671,4 +660,3 @@ X> 1. (Difficult) Prove the type class laws for the `Hashable` instances for `Ma
 In this chapter, we've been introduced to _type classes_, a type-oriented form of abstraction which enables powerful forms of code reuse. We've seen a collection of standard type classes from the PureScript standard libraries, and defined our own library based on a type class for computing hash codes.
 
 This chapter also gave an introduction to the notion of type class laws, a technique for proving properties about code which uses type classes for abstraction. Type class laws are part of a larger subject called _equational reasoning_, in which the properties of a programming language and its type system are used to enable logical reasoning about its programs. This is an important idea, and will be a theme which we will return to throughout the rest of the book.
-

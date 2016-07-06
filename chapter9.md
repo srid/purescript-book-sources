@@ -6,7 +6,7 @@ This chapter will be an extended example focussing on the `purescript-canvas` pa
 
 ## Project Setup
 
-This module's project introduces the following new Bower dependencies: 
+This module's project introduces the following new Bower dependencies:
 
 - `purescript-canvas`, which gives types to methods from the HTML5 Canvas API
 - `purescript-refs`, which provides a side-effect for using _global mutable references_
@@ -22,22 +22,24 @@ The `Example/Rectangle.purs` file contains a simple introductory example, which 
 The `main` action starts, like in the other modules, by using the `getCanvasElementById` action to get a reference to the canvas object, and the `getContext2D` action to access the 2D rendering context for the canvas:
 
 ```haskell
-main = do
+main = void $ unsafePartial do
   Just canvas <- getCanvasElementById "canvas"
   ctx <- getContext2D canvas
 ```
 
+_Note_: the call to `unsafePartial` here is necessary since the pattern match on the result of `getCanvasElementById` is partial, matching only the `Just` constructor. For our purposes, this is fine, but in production code, we would probably want to match the `Nothing` constructor and provide an appropriate error message.
+
 The types of these actions can be found using PSCi or by looking at the documentation:
 
 ```haskell
-getCanvasElementById :: forall eff. String -> Eff (canvas :: Canvas | eff) (Maybe CanvasElement)
+getCanvasElementById :: forall eff. String -> Eff (canvas :: CANVAS | eff) (Maybe CanvasElement)
 
-getContext2D :: forall eff. CanvasElement -> Eff (canvas :: Canvas | eff) Context2D
+getContext2D :: forall eff. CanvasElement -> Eff (canvas :: CANVAS | eff) Context2D
 ```
 
 `CanvasElement` and `Context2D` are types defined in the `Graphics.Canvas` module. The same module also defines the `Canvas` effect, which is used by all of the actions in the module.
 
-The graphics context `ctx` manages the state of the canvas, and provides methods to render primitive shapes, set styles and colors, and apply transformations. 
+The graphics context `ctx` manages the state of the canvas, and provides methods to render primitive shapes, set styles and colors, and apply transformations.
 
 We continue by setting the fill style to solid blue, by using the `setFillStyle` action:
 
@@ -50,9 +52,9 @@ Note that the `setFillStyle` action takes the graphics context as an argument. T
 Finally, we use the `fillPath` action to fill the rectangle. `fillPath` has the following type:
 
 ```haskell
-fillPath :: forall eff a. Context2D -> 
-                          Eff (canvas :: Canvas | eff) a -> 
-                          Eff (canvas :: Canvas | eff) a
+fillPath :: forall eff a. Context2D ->
+                          Eff (canvas :: CANVAS | eff) a ->
+                          Eff (canvas :: CANVAS | eff) a
 ```
 
 `fillPath` takes a graphics context, and another action which builds the path to render. To build a path, we can use the `rect` action. `rect` takes a graphics context, and a record which provides the position and size of the rectangle:
@@ -70,7 +72,7 @@ Build the rectangle example, providing `Example.Rectangle` as the name of the ma
 
 ```text
 $ mkdir dist/
-$ pulp build -O --main Example.Rectangle --to dist/Main.js 
+$ pulp build -O --main Example.Rectangle --to dist/Main.js
 ```
 
 Now, open the `html/index.html` file and verify that this code renders a blue rectangle in the center of the canvas.
@@ -84,11 +86,12 @@ The `Shapes.purs` file renders three shapes: a rectangle, an arc segment and a t
 We have seen that the `rect` function takes a record as its argument. In fact, the properties of the rectangle are defined in a type synonym:
 
 ```haskell
-type Rectangle = { x :: Number
-                 , y :: Number
-                 , w :: Number
-                 , h :: Number 
-                 }
+type Rectangle =
+  { x :: Number
+  , y :: Number
+  , w :: Number
+  , h :: Number
+  }
 ```
 
 The `x` and `y` properties represent the location of the top-left corner, while the `w` and `h` properties represent the width and height respectively.
@@ -96,12 +99,13 @@ The `x` and `y` properties represent the location of the top-left corner, while 
 To render an arc segment, we can use the `arc` function, passing a record with the following type:
 
 ```haskell
-type Arc = { x     :: Number
-           , y     :: Number
-           , r     :: Number
-           , start :: Number
-           , end   :: Number
-           }
+type Arc =
+  { x     :: Number
+  , y     :: Number
+  , r     :: Number
+  , start :: Number
+  , end   :: Number
+  }
 ```
 
 Here, the `x` and `y` properties represent the center point, `r` is the radius, and `start` and `end` represent the endpoints of the arc in radians.
@@ -123,9 +127,12 @@ Notice that both the `Rectangle` and `Arc` record types contain `x` and `y` prop
 For example, the `Shapes` module defines a `translate` function which translates a shape by modifying its `x` and `y` properties:
 
 ```haskell
-translate :: forall r. Number -> Number ->
-              { x :: Number, y :: Number | r } ->
-              { x :: Number, y :: Number | r }
+translate
+  :: forall r
+   . Number
+  -> Number
+  -> { x :: Number, y :: Number | r }
+  -> { x :: Number, y :: Number | r }
 translate dx dy shape = shape
   { x = shape.x + dx
   , y = shape.y + dy
@@ -136,7 +143,7 @@ Notice the row-polymorphic type. It says that `translate` accepts any record wit
 
 This is an example of _record update syntax_. The expression `shape { ... }` creates a new record based on the `shape` record, with the fields inside the braces updated to the specified values. Note that the expressions inside the braces are separated from their labels by equals symbols, not colons like in record literals.
 
-The `translate` function can be used with both the `Rectangle` and `Arc` records, as can be seen in the `Shapes` example. 
+The `translate` function can be used with both the `Rectangle` and `Arc` records, as can be seen in the `Shapes` example.
 
 The third type of path rendered in the `Shapes` example is a piecewise-linear path. Here is the corresponding code:
 
@@ -150,7 +157,7 @@ The third type of path rendered in the `Shapes` example is a piecewise-linear pa
     closePath ctx
 ```
 
-There are three functions in use here: 
+There are three functions in use here:
 
 - `moveTo` moves the current location of the path to the specified coordinates,
 - `lineTo` renders a line segment between the current location and the specified coordinates, and updates the current location,
@@ -161,37 +168,39 @@ The result of this code snippet is to fill an isosceles triangle.
 Build the example by specifying `Example.Shapes` as the main module:
 
 ```text
-$ pulp build -O --main Example.Shapes --to dist/Main.js 
+$ pulp build -O --main Example.Shapes --to dist/Main.js
 ```
 
 and open `html/index.html` again to see the result. You should see the three different types of shapes rendered to the canvas.
 
 X> ## Exercises
-X> 
+X>
 X> 1. (Easy) Experiment with the `strokePath` and `setStrokeStyle` functions in each of the examples so far.
 X> 1. (Easy) The `fillPath` and `strokePath` functions can be used to render complex paths with a common style by using a do notation block inside the function argument. Try changing the `Rectangle` example to render two rectangles side-by-side using the same call to `fillPath`. Try rendering a sector of a circle by using a combination of a piecewise-linear path and an arc segment.
 X> 1. (Medium) Given the following record type:
-X> 
+X>
 X>     ```haskell
 X>     type Point = { x :: Number, y :: Number }
 X>     ```
-X> 
+X>
 X>     which represents a 2D point, write a function `renderPath` which strokes a closed path constructed from a number of points:
-X> 
+X>
 X>     ```haskell
-X>     renderPath :: forall eff. Context2D -> 
-X>                               Array Point -> 
-X>                               Eff (canvas :: Canvas | eff) Context2D
+X>     renderPath
+X>       :: forall eff
+X>        . Context2D
+X>       -> Array Point
+X>       -> Eff (canvas :: Canvas | eff) Unit
 X>     ```
-X> 
+X>
 X>     Given a function
-X> 
+X>
 X>     ```haskell
 X>     f :: Number -> Point
 X>     ```
-X> 
+X>
 X>     which takes a `Number` between `0` and `1` as its argument and returns a `Point`, write an action which plots `f` by using your `renderPath` function. Your action should approximate the path by sampling `f` at a finite set of points.
-X> 
+X>
 X>     Experiment by rendering different paths by varying the function `f`.
 
 ## Drawing Random Circles
@@ -205,10 +214,10 @@ The `main` action obtains a reference to the graphics context as before, and the
   setStrokeStyle "#000000" ctx
 ```
 
-Next, the code uses the `forE` action to loop over the integers between `0` and `100`:
+Next, the code uses the `for_` function to loop over the integers between `0` and `100`:
 
 ```haskell
-  forE 1.0 100.0 $ \_ -> do
+  for_ (1 .. 100) \_ -> do
 ```
 
 On each iteration, the do notation block starts by generating three random numbers:
@@ -238,16 +247,12 @@ and finally fills and strokes the arc with the current styles:
 ```haskell
     fillPath ctx path
     strokePath ctx path
-
-    return unit
 ```
-
-Note that the final line is required to ensure that the function passed to `forE` has the correct type.
 
 Build this example by specifying the `Example.Random` module as the main module:
 
 ```text
-$ pulp build -O --main Example.Random --to dist/Main.js 
+$ pulp build -O --main Example.Random --to dist/Main.js
 ```
 
 and view the result by opening `html/index.html`.
@@ -259,14 +264,25 @@ There is more to the canvas than just rendering simple shapes. Every canvas main
 The `purescript-canvas` library supports these transformations using the following functions:
 
 ```haskell
-translate :: forall eff. TranslateTransform -> Context2D
-                                            -> Eff (canvas :: Canvas | eff) Context2D
-rotate    :: forall eff. Number             -> Context2D
-                                            -> Eff (canvas :: Canvas | eff) Context2D
-scale     :: forall eff. ScaleTransform     -> Context2D
-                                            -> Eff (canvas :: Canvas | eff) Context2D
-transform :: forall eff. Transform          -> Context2D
-                                            -> Eff (canvas :: Canvas | eff) Context2D
+translate :: forall eff
+           . TranslateTransform
+          -> Context2D
+          -> Eff (canvas :: Canvas | eff) Context2D
+
+rotate    :: forall eff
+           . Number
+          -> Context2D
+          -> Eff (canvas :: Canvas | eff) Context2D
+
+scale     :: forall eff
+           . ScaleTransform
+          -> Context2D
+          -> Eff (canvas :: CANVAS | eff) Context2D
+
+transform :: forall eff
+           . Transform
+          -> Context2D
+          -> Eff (canvas :: CANVAS | eff) Context2D
 ```
 
 The `translate` action performs a translation whose components are specified by the properties of the `TranslateTransform` record.
@@ -277,30 +293,37 @@ The `scale` action performs a scaling, with the origin as the center. The `Scale
 
 Finally, `transform` is the most general action of the four here. It performs an affine transformation specified by a matrix.
 
-Any shapes rendered after these actions have been invoked will automatically have the appropriate transformation applied. 
+Any shapes rendered after these actions have been invoked will automatically have the appropriate transformation applied.
 
 In fact, the effect of each of these functions is to _post-multiply_ the transformation with the context's current transformation. The result is that if multiple transformations applied after one another, then their effects are actually applied in reverse:
 
 ```haskell
 transformations ctx = do
-  translate { translateX: 10.0, translateY } ctx
+  translate { translateX: 10.0, translateY: 10.0 } ctx
   scale { scaleX: 2.0, scaleY: 2.0 } ctx
   rotate (Math.pi / 2.0) ctx
-  
+
   renderScene
 ```
 
 The effect of this sequence of actions is that the scene is rotated, then scaled, and finally translated.
 
-## Preserving the Context 
+## Preserving the Context
 
-A common use case is to render some subset of the scene using a transformation, and then to reset the transformation afterwards. 
+A common use case is to render some subset of the scene using a transformation, and then to reset the transformation afterwards.
 
 The Canvas API provides the `save` and `restore` methods, which manipulate a _stack_ of states associated with the canvas. `purescript-canvas` wraps this functionality into the following functions:
 
 ```haskell
-save    :: forall eff. Context2D -> Eff (canvas :: Canvas | eff) Context2D
-restore :: forall eff. Context2D -> Eff (canvas :: Canvas | eff) Context2D
+save
+  :: forall eff
+   . Context2D
+  -> Eff (canvas :: CANVAS | eff) Context2D
+
+restore
+  :: forall eff
+   . Context2D
+  -> Eff (canvas :: CANVAS | eff) Context2D
 ```
 
 The `save` action pushes the current state of the context (including the current transformation and any styles) onto the stack, and the `restore` action pops the top state from the stack and restores it.
@@ -318,17 +341,20 @@ rotated ctx render = do
 In the interest of abstracting over common use cases using higher-order functions, the `purescript-canvas` library provides the `withContext` function, which performs some canvas action while preserving the original context state:
 
 ```haskell
-withContext :: forall eff a. Context2D -> 
-                             Eff (canvas :: Canvas | eff) a ->
-                             Eff (canvas :: Canvas | eff) a          
+withContext
+  :: forall eff a
+   . Context2D
+  -> Eff (canvas :: CANVAS | eff) a
+  -> Eff (canvas :: CANVAS | eff) a          
 ```
 
 We could rewrite the `rotated` function above using `withContext` as follows:
 
 ```haskell
-rotated ctx render = withContext ctx $ do
-  rotate Math.pi ctx
-  render
+rotated ctx render =
+  withContext ctx do
+    rotate Math.pi ctx
+    render
 ```
 
 ## Global Mutable State
@@ -372,15 +398,15 @@ The `readRef` action is used to read the new click count:
 In the `render` function, the click count is used to determine the transformation applied to a rectangle:
 
 ```haskell
-    withContext ctx $ do
+    withContext ctx do
       let scaleX = Math.sin (toNumber count * Math.pi / 4.0) + 1.5
       let scaleY = Math.sin (toNumber count * Math.pi / 6.0) + 1.5
-      
+
       translate { translateX: 300.0, translateY:  300.0 } ctx
       rotate (toNumber count * Math.pi / 18.0) ctx
       scale { scaleX: scaleX, scaleY: scaleY } ctx
       translate { translateX: -100.0, translateY: -100.0 } ctx
-      
+
       fillPath ctx $ rect ctx
         { x: 0.0
         , y: 0.0
@@ -399,22 +425,22 @@ This action uses `withContext` to preserve the original transformation, and then
 Build the example:
 
 ```text
-$ pulp build -O --main Example.Refs --to dist/Main.js 
+$ pulp build -O --main Example.Refs --to dist/Main.js
 ```
 
 and open the `html/index.html` file. If you click the canvas repeatedly, you should see a green rectangle rotating around the center of the canvas.
 
 X> ## Examples
-X> 
+X>
 X> 1. (Easy) Write a higher-order function which strokes and fills a path simultaneously. Rewrite the `Random.purs` example using your function.
-X> 1. (Medium) Use the `RANDOM` and `DOM` effects to create an application which renders a circle with random position, color and radius to the canvas when the mouse is clicked. 
+X> 1. (Medium) Use the `RANDOM` and `DOM` effects to create an application which renders a circle with random position, color and radius to the canvas when the mouse is clicked.
 X> 1. (Medium) Write a function which transforms the scene by rotating it around a point with specified coordinates. _Hint_: use a translation to first translate the scene to the origin.
 
 ## L-Systems
 
 In this final example, we will use the `purescript-canvas` package to write a function for rendering _L-systems_ (or _Lindenmayer systems_).
 
-An L-system is defined by an _alphabet_, an initial sequence of letters from the alphabet, and a set of _production rules_. Each production rule takes a letter of the alphabet and returns a sequence of replacement letters. This process is iterated some number of times starting with the initial sequence of letters. 
+An L-system is defined by an _alphabet_, an initial sequence of letters from the alphabet, and a set of _production rules_. Each production rule takes a letter of the alphabet and returns a sequence of replacement letters. This process is iterated some number of times starting with the initial sequence of letters.
 
 If each letter of the alphabet is associated with some instruction to perform on the canvas, the L-system can be rendered by following the instructions in order.
 
@@ -471,14 +497,14 @@ Now we can implement a function `lsystem` which will take a specification in thi
 Here is a first approximation to the type of `lsystem`:
 
 ```haskell
-forall eff. Sentence ->
-            (Alphabet -> Sentence) ->
-            (Alphabet -> Eff (canvas :: Canvas | eff) Unit) ->
-            Int ->
-            Eff (canvas :: Canvas | eff) Unit
+forall eff. Sentence
+         -> (Alphabet -> Sentence)
+         -> (Alphabet -> Eff (canvas :: Canvas | eff) Unit)
+         -> Int
+         -> Eff (canvas :: CANVAS | eff) Unit
 ```
 
-The first two argument types correspond to the values `initial` and `productions`. 
+The first two argument types correspond to the values `initial` and `productions`.
 
 The third argument represents a function which takes a letter of the alphabet and _interprets_ it by performing some actions on the canvas. In our example, this would mean turning left in the case of the letter `L`, turning right in the case of the letter `R`, and moving forward in the case of a letter `F`.
 
@@ -487,11 +513,11 @@ The final argument is a number representing the number of iterations of the prod
 The first observation is that the `lsystem` function should work for only one type of `Alphabet`, but for any type, so we should generalize our type accordingly. Let's replace `Alphabet` and `Sentence` with `a` and `Array a` for some quantified type variable `a`:
 
 ```haskell
-forall a eff. Array a ->
-              (a -> Array a) ->
-              (a -> Eff (canvas :: Canvas | eff) Unit) ->
-              Int ->
-              Eff (canvas :: Canvas | eff) Unit
+forall a eff. Array a
+           -> (a -> Array a)
+           -> (a -> Eff (canvas :: CANVAS | eff) Unit)
+           -> Int
+           -> Eff (canvas :: CANVAS | eff) Unit
 ```
 
 The second observation is that, in order to implement instructions like "turn left" and "turn right", we will need to maintain some state, namely the direction in which the path is moving at any time. We need to modify our function to pass the state through the computation. Again, the `lsystem` function should work for any type of state, so we will represent it using the type variable `s`.
@@ -499,12 +525,12 @@ The second observation is that, in order to implement instructions like "turn le
 We need to add the type `s` in three places:
 
 ```haskell
-forall a s eff. Array a ->
-                (a -> Array a) ->
-                (s -> a -> Eff (canvas :: Canvas | eff) s) ->
-                Int ->
-                s -> 
-                Eff (canvas :: Canvas | eff) s
+forall a s eff. Array a
+             -> (a -> Array a)
+             -> (s -> a -> Eff (canvas :: CANVAS | eff) s)
+             -> Int
+             -> s
+             -> Eff (canvas :: CANVAS | eff) s
 ```
 
 Firstly, the type `s` was added as the type of an additional argument to `lsystem`. This argument will represent the initial state of the L-system.
@@ -522,7 +548,7 @@ type State =
 ```
 
 The properties `x` and `y` represent the current position of the path, and the `theta` property represents the current direction of the path, specified as the angle between the path direction and the horizontal axis, in radians.
- 
+
 The initial state of the system might be specified as follows:
 
 ```haskell
@@ -535,25 +561,26 @@ Now let's try to implement the `lsystem` function. We will find that its definit
 It seems reasonable that `lsystem` should recurse on its fourth argument (of type `Int`). On each step of the recursion, the current sentence will change, having been updated by using the production rules. With that in mind, let's begin by introducing names for the function arguments, and delegating to a helper function:
 
 ```haskell
-lsystem :: forall a s eff. Array a ->
-                           (a -> Array a) ->
-                           (s -> a -> Eff (canvas :: Canvas | eff) s) ->
-                           Int ->
-                           s -> 
-                           Eff (canvas :: Canvas | eff) s
+lsystem :: forall a s eff
+         . Array a
+        -> (a -> Array a)
+        -> (s -> a -> Eff (canvas :: CANVAS | eff) s)
+        -> Int
+        -> s
+        -> Eff (canvas :: CANVAS | eff) s
 lsystem init prod interpret n state = go init n
   where
 ```
 
 The `go` function works by recursion on its second argument. There are two cases: when `n` is zero, and when `n` is non-zero.
 
-In the first case, the recursion is complete, and we simply need to interpret the current sentence according to the interpretation function. We have a sentence of type `Array a`, a state of type `s`, and a function of type `s -> a -> Eff (canvas :: Canvas | eff) s`. This sounds like a job for the `foldM` function which we defined earlier, and which is available from the `purescript-control` package:
+In the first case, the recursion is complete, and we simply need to interpret the current sentence according to the interpretation function. We have a sentence of type `Array a`, a state of type `s`, and a function of type `s -> a -> Eff (canvas :: CANVAS | eff) s`. This sounds like a job for the `foldM` function which we defined earlier, and which is available from the `purescript-control` package:
 
 ```haskell
   go s 0 = foldM interpret state s
 ```
 
-What about in the non-zero case? In that case, we can simply apply the production rules to each letter of the current sentence, concatenate the results, and recur:
+What about in the non-zero case? In that case, we can simply apply the production rules to each letter of the current sentence, concatenate the results, and repeat by calling `go` recursively:
 
 ```haskell
   go s n = go (concatMap prod s) (n - 1)
@@ -561,46 +588,47 @@ What about in the non-zero case? In that case, we can simply apply the productio
 
 That's it! Note how the use of higher order functions like `foldM` and `concatMap` allowed us to communicate our ideas concisely.
 
-However, we're not quite done. The type we have given is actually still too specific. Note that we don't use any canvas operations anywhere in our implementation. Nor do we make use of the structure of the `Eff` monad at all. In fact, our function works for _any_ monad `m`! 
+However, we're not quite done. The type we have given is actually still too specific. Note that we don't use any canvas operations anywhere in our implementation. Nor do we make use of the structure of the `Eff` monad at all. In fact, our function works for _any_ monad `m`!
 
 Here is the more general type of `lsystem`, as specified in the accompanying source code for this chapter:
 
 ```haskell
-lsystem :: forall a m s. (Monad m) =>
-                         Array a ->
-                         (a -> Array a) ->
-                         (s -> a -> m s) ->
-                         Int ->
-                         s -> 
-                         m s
+lsystem :: forall a m s
+         . Monad m
+        => Array a
+        -> (a -> Array a)
+        -> (s -> a -> m s)
+        -> Int
+        -> s
+        -> m s
 ```
 
 We can understand this type as saying that our interpretation function is free to have any side-effects at all, captured by the monad `m`. It might render to the canvas, or print information to the console, or support failure or multiple return values. The reader is encouraged to try writing L-systems which use these various types of side-effect.
 
 This function is a good example of the power of separating data from implementation. The advantage of this approach is that we gain the freedom to interpret our data in multiple different ways. We might even factor `lsystem` into two smaller functions: the first would build the sentence using repeated application of `concatMap`, and the second would interpret the sentence using `foldM`. This is also left as an exercise for the reader.
 
-Let's complete our example by implementing its interpretation function. The type of `lsystem` tells us that its type signature must be `s -> a -> m s` for some types `a` and `s` and a type constructor `m`. We know that we want `a` to be `Alphabet` and `s` to be `State`, and for the monad `m` we can choose `Eff (canvas :: Canvas)`. This gives us the following type:
+Let's complete our example by implementing its interpretation function. The type of `lsystem` tells us that its type signature must be `s -> a -> m s` for some types `a` and `s` and a type constructor `m`. We know that we want `a` to be `Alphabet` and `s` to be `State`, and for the monad `m` we can choose `Eff (canvas :: CANVAS)`. This gives us the following type:
 
 ```haskell
-interpret :: State -> Alphabet -> Eff (canvas :: Canvas) State
+interpret :: State -> Alphabet -> Eff (canvas :: CANVAS) State
 ```
 
 To implement this function, we need to handle the three data constructors of the `Alphabet` type. To interpret the letters `L` (move left) and `R` (move right), we simply have to update the state to change the angle `theta` appropriately:
 
 ```haskell
-interpret state L = return $ state { theta = state.theta - Math.pi / 3 }
-interpret state R = return $ state { theta = state.theta + Math.pi / 3 }
+interpret state L = pure $ state { theta = state.theta - Math.pi / 3 }
+interpret state R = pure $ state { theta = state.theta + Math.pi / 3 }
 ```
 
 To interpret the letter `F` (move forward), we can calculate the new position of the path, render a line segment, and update the state, as follows:
 
 ```haskell
 interpret state F = do
-  let x' = state.x + Math.cos state.theta * 1.5
-      y' = state.y + Math.sin state.theta * 1.5
+  let x = state.x + Math.cos state.theta * 1.5
+      y = state.y + Math.sin state.theta * 1.5
   moveTo ctx state.x state.y
-  lineTo ctx x' y'
-  return { x: x', y: y', theta: state.theta }
+  lineTo ctx x y
+  pure { x, y, theta: state.theta }
 ```
 
 Note that in the source code for this chapter, the `interpret` function is defined using a `let` binding inside the `main` function, so that the name `ctx` is in scope. It would also be possible to move the context into the `State` type, but this would be inappropriate because it is not a changing part of the state of the system.
@@ -611,7 +639,7 @@ To render this L-system, we can simply use the `strokePath` action:
 strokePath ctx $ lsystem initial productions interpret 5 initialState
 ```
 
-Compile the L-system example using 
+Compile the L-system example using
 
 ```text
 $ pulp build -O --main Example.LSystem --to dist/Main.js
@@ -620,13 +648,13 @@ $ pulp build -O --main Example.LSystem --to dist/Main.js
 and open `html/index.html`. You should see the Koch curve rendered to the canvas.
 
 X> ## Exercises
-X> 
+X>
 X> 1. (Easy) Modify the L-system example above to use `fillPath` instead of `strokePath`. _Hint_: you will need to include a call to `closePath`, and move the call to `moveTo` outside of the `interpret` function.
 X> 1. (Easy) Try changing the various numerical constants in the code, to understand their effect on the rendered system.
 X> 1. (Medium) Break the `lsystem` function into two smaller functions. The first should build the final sentence using repeated application of `concatMap`, and the second should use `foldM` to interpret the result.
 X> 1. (Medium) Add a drop shadow to the filled shape, by using the `setShadowOffsetX`, `setShadowOffsetY`, `setShadowBlur` and `setShadowColor` actions. _Hint_: use PSCi to find the types of these functions.
 X> 1. (Medium) The angle of the corners is currently a constant (`pi/3`). Instead, it can be moved into the `Alphabet` data type, which allows it to be changed by the production rules:
-X> 
+X>
 X>     ```haskell
 X>     type Angle = Number
 X>     
@@ -635,26 +663,26 @@ X>     ```
 X>     
 X>     How can this new information be used in the production rules to create interesting shapes?
 X> 1. (Difficult) An L-system is given by an alphabet with four letters: `L` (turn left through 60 degrees), `R` (turn right through 60 degrees), `F` (move forward) and `M` (also move forward).
-X> 
+X>
 X>     The initial sentence of the system is the single letter `M`.
-X> 
+X>
 X>     The production rules are specified as follows:
-X> 
+X>
 X>     ```text
 X>     L -> L
 X>     R -> R
 X>     F -> FLMLFRMRFRMRFLMLF
 X>     M -> MRFRMLFLMLFLMRFRM
 X>     ```
-X> 
+X>
 X>     Render this L-system. _Note_: you will need to decrease the number of iterations of the production rules, since the size of the final sentence grows exponentially with the number of iterations.
-X> 
+X>
 X>     Now, notice the symmetry between `L` and `M` in the production rules. The two "move forward" instructions can be differentiated using a `Boolean` value using the following alphabet type:
-X> 
+X>
 X>     ```haskell
 X>     data Alphabet = L | R | F Boolean
 X>     ```
-X> 
+X>
 X>     Implement this L-system again using this representation of the alphabet.
 X> 1. (Difficult) Use a different monad `m` in the interpretation function. You might try using the `CONSOLE` effect to write the L-system onto the console, or using the `RANDOM` effect to apply random "mutations" to the state type.
 
@@ -665,14 +693,15 @@ In this chapter, we learned how to use the HTML5 Canvas API from PureScript by u
 The examples also demonstrated the power of higher-order functions and _separating data from implementation_. It would be possible to extend these ideas to completely separate the representation of a scene from its rendering function, using an algebraic data type, for example:
 
 ```haskell
-data Scene = Rect Rectangle
-           | Arc Arc
-           | PiecewiseLinear (Array Point)
-           | Transformed Transform Scene
-           | Clipped Rectangle Scene
-           | ...
+data Scene
+  = Rect Rectangle
+  | Arc Arc
+  | PiecewiseLinear (Array Point)
+  | Transformed Transform Scene
+  | Clipped Rectangle Scene
+  | ...
 ```
 
 This approach is taken in the `purescript-drawing` package, and it brings the flexibility of being able to manipulate the scene as data in various ways before rendering.
 
-In the next chapter, we will see how to implement libraries like `purescript-canvas` which wrap existing JavaScript functionality, by using PureScript's _foreign function interface_. 
+In the next chapter, we will see how to implement libraries like `purescript-canvas` which wrap existing JavaScript functionality, by using PureScript's _foreign function interface_.

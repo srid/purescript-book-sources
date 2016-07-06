@@ -12,13 +12,13 @@ Here are the tools we will be using to set up our PureScript development environ
 
 - [`psc`](http://purescript.org) - The PureScript compiler itself.
 - [`npm`](http://npmjs.org) - The Node Package Manager, which will allow us to install the rest of our development tools.
-- [Pulp](https://github.com/bodil/pulp) - A command-line tool maintained by Bodil Stokke, which automates many of the tasks associated with managing PureScript projects.
+- [Pulp](https://github.com/bodil/pulp) - A command-line tool which automates many of the tasks associated with managing PureScript projects.
 
 The rest of the chapter will guide you through installing and configuring these tools.
 
 ## Installing PureScript
 
-The recommended approach to installing the PureScript compiler is to download a binary release for your platform from the [PureScript website](http://purescript.org). 
+The recommended approach to installing the PureScript compiler is to download a binary release for your platform from the [PureScript website](http://purescript.org).
 
 You should verify that the PureScript compiler executables are available on your path. Try running the PureScript compiler on the command line to verify this:
 
@@ -28,20 +28,20 @@ $ psc
 
 Other options for installing the PureScript compiler include:
 
-- Using a popular package manager, such as NPM, Homebrew (MacOS) or Chocolatey (Windows).
+- Using a popular package manager, such as NPM or Homebrew (on MacOS).
 - Building the compiler from source. Instructions can be found on the PureScript website.
 
 ## Installing Tools
 
 If you do not have a working installation of [NodeJS](http://nodejs.org/), you should install it. This should also install the `npm` package manager on your system. Make sure you have `npm` installed and available on your path.
 
-You will also need to install the Pulp command line tool using `npm`, as follows:
+You will also need to install the Pulp command line tool, and the Bower package manager using `npm`, as follows:
 
 ```text
-$ npm install -g pulp
+$ npm install -g pulp bower
 ```
 
-This will place the Pulp command line tool on your path. At this point, you will have all the tools needed to create your first PureScript project.
+This will place the `pulp` and `bower` command line tools on your path. At this point, you will have all the tools needed to create your first PureScript project.
 
 ## Hello, PureScript!
 
@@ -79,7 +79,7 @@ This small sample illustrates a few key ideas:
 - Modules are imported using their full names, including dots to separate the parts of the module name. Here, we import the `Control.Monad.Eff.Console` module, which provides the `log` function.
 - The `main` program is defined as a function application. In PureScript, function application is indicated with whitespace separating the function name from its arguments.
 
-Let's build and run this code. Invoke the following command:
+Let's build and run this code using the following command:
 
 ```text
 $ pulp run
@@ -104,7 +104,7 @@ $ pulp browserify
 * Browserifying...
 ```
 
-Following this, you should see a large amount of Javascript code printed to the console. This is the output of the [Browserify](http://browserify.org/) tool, applied to a body of standard code which ships with the PureScript compiler, called the _Prelude_, as well as the code in the `src` directory. This Javascript code can be saved to a file, and included in a HTML document. If you try this, you should see the words "Hello, World!" printed to your browser's console.
+Following this, you should see a large amount of Javascript code printed to the console. This is the output of the [Browserify](http://browserify.org/) tool, applied to a standard PureScript library called the _Prelude_, as well as the code in the `src` directory. This Javascript code can be saved to a file, and included in a HTML document. If you try this, you should see the words "Hello, World!" printed to your browser's console.
 
 ## Removing Unused Code
 
@@ -124,9 +124,9 @@ Again, the generated code can be used in a HTML document. If you open `output.js
 ```javascript
 (function(exports) {
   "use strict";
-  
+
   var Control_Monad_Eff_Console = PS["Control.Monad.Eff.Console"];
-      
+
   var main = Control_Monad_Eff_Console.log("Hello, World!");
   exports["main"] = main;
 })(PS["Main"] = PS["Main"] || {});
@@ -162,10 +162,10 @@ The generated modules will be placed in the `output` directory by default. Each 
 To write the `diagonal` function (the goal of this chapter), we will need to be able to compute square roots. The `purescript-math` package contains type definitions for functions defined on the JavaScript `Math` object, so let's install it:
 
 ```text
-$ pulp dep install purescript-math --save
+$ bower install purescript-math --save
 ```
 
-Pulp uses Bower to manage PureScript dependencies. The `--save` option causes the dependency to be added to the `bower.json` configuration file.
+The `--save` option causes the dependency to be added to the `bower.json` configuration file.
 
 The `purescript-math` library sources should now be available in the `bower_components` subdirectory, and will be included when you compile your project.
 
@@ -196,7 +196,7 @@ Note that there is no need to define a type for our function. The compiler is ab
 Let's also modify the `main` function to use the new `diagonal` function:
 
 ```haskell
-main = print (diagonal 3.0 4.0)
+main = logShow (diagonal 3.0 4.0)
 ```
 
 Now compile and run the project again, using `pulp run`:
@@ -213,13 +213,11 @@ $ pulp run
 
 The PureScript compiler also ships with an interactive REPL called PSCi. This can be very useful for testing your code, and experimenting with new ideas. Let's use PSCi to test the `diagonal` function.
 
-Pulp can generate configuration files for PSCi to load our modules automatically, via the `pulp psci` command:
-
-Load PSCi now:
+Pulp can load source modules into PSCi automatically, via the `pulp psci` command:
 
 ```text
 $ pulp psci
-> 
+>
 ```
 
 You can type `:?` to see a list of commands:
@@ -232,7 +230,6 @@ The following commands are available:
     :quit                     Quit PSCi
     :reset                    Reset
     :browse      <module>     Browse <module>
-    :load        <file>       Load <file> for importing
     :type        <expr>       Show the type of <expr>
     :kind        <type>       Show the kind of <type>
     :show        import       Show imported modules
@@ -253,14 +250,15 @@ Try evaluating a few expressions now:
 > 1 + 2
 3
 
-> "Hello, " ++ "World!"
+> "Hello, " <> "World!"
 "Hello, World!"
 ```
 
 Let's try out our new `diagonal` function in PSCi:
 
 ```text
-> Main.diagonal 5.0 12.0
+> import Main
+> diagonal 5.0 12.0
 
 13.0
 ```
@@ -280,24 +278,23 @@ Finally, you can check the type of an expression by using the `:type` command:
 
 ```text
 > :type true
-Prim.Boolean
+Boolean
 
 > :type [1, 2, 3]
-Prim.Array Prim.Int
+Array Int
 ```
 
 Try out the interactive mode now. If you get stuck at any point, simply use the Reset command `:reset` to unload any modules which may be compiled in memory.
 
 X> ## Exercises
-X> 
-X> 1. (Easy) Use the `Math.pi` constant to write a function `circleArea` which computes the area of a circle with a given radius. Test your function using PSCi (_Hint_: don't forget to import `Math.pi` by modifying the `import Math` statement).
-X> 1. (Medium) Use `pulp dep install` to install the `purescript-globals` package as a dependency. Test out its functions in PSCi (_Hint_: you can use the `:browse` command in PSCi to browse the contents of a module).
+X>
+X> 1. (Easy) Use the `Math.pi` constant to write a function `circleArea` which computes the area of a circle with a given radius. Test your function using PSCi (_Hint_: don't forget to import `pi` by modifying the `import Math` statement).
+X> 1. (Medium) Use `bower install` to install the `purescript-globals` package as a dependency. Test out its functions in PSCi (_Hint_: you can use the `:browse` command in PSCi to browse the contents of a module).
 
-## Conclusion 
+## Conclusion
 
 In this chapter, we set up a simple PureScript project using the Pulp tool.
 
 We also wrote our first PureScript function, and a JavaScript program which could be compiled and executed either in the browser or in NodeJS.
 
 We will use this development setup in the following chapters to compile, debug and test our code, so you should make sure that you are comfortable with the tools and techniques involved.
-

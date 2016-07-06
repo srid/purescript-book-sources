@@ -2,12 +2,12 @@
 
 ## Chapter Goals
 
-In this chapter, we will explore the implementation of _domain-specific languages_ (or _DSLs_) in PureScript, using a number of standard techniques. 
+In this chapter, we will explore the implementation of _domain-specific languages_ (or _DSLs_) in PureScript, using a number of standard techniques.
 
 A domain-specific language is a language which is well-suited to development in a particular problem domain. Its syntax and functions are chosen to maximize readability of code used to express ideas in that domain. We have already seen a number of examples of domain-specific languages in this book:
 
 - The `Game` monad and its associated actions, developed in chapter 11, constitute a domain-specific language for the domain of _text adventure game development_.
-- The library of combinators which we wrote for the `ContT` and `Parallel` functors in chapter 12 could be considered an example of a domain-specific language for the domain of _asynchronous programming_.
+- The library of combinators which we wrote for the `Async` and `Parallel` functors in chapter 12 could be considered an example of a domain-specific language for the domain of _asynchronous programming_.
 - The `purescript-quickcheck` package, covered in chapter 13, is a domain-specific language for the domain of _generative testing_. Its combinators enable a particularly expressive notation for test properties.
 
 This chapter will take a more structured approach to some of standard techniques in the implementation of domain-specific languages. It is by no means a complete exposition of the subject, but should provide you with enough knowledge to build some practical DSLs for your own tasks.
@@ -59,19 +59,19 @@ $ pulp psci -m
 > import Data.Maybe
 > import Control.Monad.Eff.Console
 
-> log $ render $ Element 
+> log $ render $ Element
     { name: "p"
     , attribs: [
-        Attribute 
+        Attribute
           { key: "class"
-          , value: "main" 
+          , value: "main"
           }
       ]
     , content: Just [
         TextContent "Hello World!"
-      ] 
+      ]
     }
-  
+
 <p class="main">Hello World!</p>
 unit
 ```
@@ -83,7 +83,7 @@ As it stands, there are several problems with this library:
     - The developer might mistype the element name
     - The developer can associate an attribute with the wrong type of element
     - The developer can use a closed element when an open element is correct
-    
+
 In the remainder of the chapter, we will apply certain techniques to solve these problems and turn our library into a usable domain-specific language for creating HTML documents.
 
 ## Smart Constructors
@@ -118,7 +118,7 @@ Finally, we update the module exports list to only export those functions which 
 
 ```haskell
 module Data.DOM.Smart
-  ( Element()
+  ( Element
   , Attribute(..)
   , Content(..)
 
@@ -133,7 +133,7 @@ module Data.DOM.Smart
 The module exports list is provided immediately after the module name inside parentheses. Each module export can be one of three types:
 
 - A value (or function), indicated by the name of the value,
-- A type class, indicated by the name of the class, 
+- A type class, indicated by the name of the class,
 - A type constructor and any associated data constructors, indicated by the name of the type followed by a parenthesized list of exported data constructors.
 
 Here, we export the `Element` _type_, but we do not export its data constructors. If we did, the user would be able to construct invalid HTML elements.
@@ -158,11 +158,13 @@ elem = ElementContent
 Let's apply the same technique to the `Attribute` type. First, we provide a general-purpose smart constructor for attributes. Here is a first attempt:
 
 ```haskell
-(:=) :: String -> String -> Attribute
-(:=) key value = Attribute
+attribute :: String -> String -> Attribute
+attribute key value = Attribute
   { key: key
   , value: value
   }
+
+infix 4 attribute as :=
 ```
 
 This representation suffers from the same problem as the original `Element` type - it is possible to represent attributes which do not exist or whose names were entered incorrectly. To solve this problem, we can create a newtype which represents attribute names:
@@ -174,8 +176,8 @@ newtype AttributeKey = AttributeKey String
 With that, we can modify our operator as follows:
 
 ```haskell
-(:=) :: AttributeKey -> String -> Attribute
-(:=) (AttributeKey key) value = Attribute
+attribute :: AttributeKey -> String -> Attribute
+attribute (AttributeKey key) value = Attribute
   { key: key
   , value: value
   }
@@ -204,10 +206,10 @@ Here is the final exports list for our new module. Note that we no longer export
 
 ```haskell
 module Data.DOM.Smart
-  ( Element()
-  , Attribute()
-  , Content()
-  , AttributeKey()
+  ( Element
+  , Attribute
+  , Content
+  , AttributeKey
 
   , a
   , p
@@ -219,7 +221,7 @@ module Data.DOM.Smart
   , width
   , height
 
-  , (:=)
+  , attribute, (:=)
   , text
   , elem
 
@@ -236,7 +238,7 @@ $ pulp psci
 > import Data.DOM.Smart
 > import Control.Monad.Eff.Console
 > log $ render $ p [ _class := "main" ] [ text "Hello World!" ]
-  
+
 <p class="main">Hello World!</p>
 unit
 ```
@@ -244,27 +246,27 @@ unit
 Note, however, that no changes had to be made to the `render` function, because the underlying data representation never changed. This is one of the benefits of the smart constructors approach - it allows us to separate the internal data representation for a module from the representation which is perceived by users of its external API.
 
 X> ## Exercises
-X> 
+X>
 X> 1. (Easy) Use the `Data.DOM.Smart` module to experiment by creating new HTML documents using `render`.
 X> 1. (Medium) Some HTML attributes such as `checked` and `disabled` do not require values, and may be rendered as _empty attributes_:
-X> 
+X>
 X>     ```html
 X>     <input disabled>
 X>     ```
-X> 
-X>     Modify the representation of an `Attribute` to take empty attributes into account. Write a function which can be used in place of `(:=)` to add an empty attribute to an element. 
+X>
+X>     Modify the representation of an `Attribute` to take empty attributes into account. Write a function which can be used in place of `attribute` or `:=` to add an empty attribute to an element.
 
 ## Phantom Types
 
 To motivate the next technique, consider the following code:
 
 ```text
-> log $ render $ img 
+> log $ render $ img
     [ src    := "cat.jpg"
     , width  := "foo"
-    , height := "bar" 
+    , height := "bar"
     ]
-  
+
 <img src="cat.jpg" width="foo" height="bar" />
 unit
 ```
@@ -279,11 +281,11 @@ newtype AttributeKey a = AttributeKey String
 
 The type variable `a` is called a _phantom type_ because there are no values of type `a` involved in the right-hand side of the definition. The type `a` only exists to provide more information at compile-time. Any value of type `AttributeKey a` is simply a string at runtime, but at compile-time, the type of the value tells us the desired type of the values associated with this key.
 
-We can modify the type of our `(:=)` operator to take the new form of `AttributeKey` into account:
+We can modify the type of our `attribute` function to take the new form of `AttributeKey` into account:
 
 ```haskell
-(:=) :: forall a. (IsValue a) => AttributeKey a -> a -> Attribute
-(:=) (AttributeKey key) value = Attribute
+attribute :: forall a. IsValue a => AttributeKey a -> a -> Attribute
+attribute (AttributeKey key) value = Attribute
   { key: key
   , value: toValue value
   }
@@ -298,13 +300,13 @@ class IsValue a where
   toValue :: a -> String
 ```
 
-We also provide type class instances for the `String` and `Number` types:
+We also provide type class instances for the `String` and `Int` types:
 
 ```haskell
 instance stringIsValue :: IsValue String where
   toValue = id
 
-instance numberIsValue :: IsValue Number where
+instance intIsValue :: IsValue Int where
   toValue = show
 ```
 
@@ -320,10 +322,10 @@ _class = AttributeKey "class"
 src :: AttributeKey String
 src = AttributeKey "src"
 
-width :: AttributeKey Number
+width :: AttributeKey Int
 width = AttributeKey "width"
 
-height :: AttributeKey Number
+height :: AttributeKey Int
 height = AttributeKey "height"
 ```
 
@@ -334,27 +336,27 @@ Now we find it is impossible to represent these invalid HTML documents, and we a
 > import Data.DOM.Phantom
 > import Control.Monad.Eff.Console
 
-> log $ render $ img 
+> log $ render $ img
     [ src    := "cat.jpg"
     , width  := 100
-    , height := 200 
+    , height := 200
     ]
-  
+
 <img src="cat.jpg" width="100" height="200" />
 unit
 ```
 
 X> ## Exercises
-X> 
+X>
 X> 1. (Easy) Create a data type which represents either pixel or percentage lengths. Write an instance of `IsValue` for your type. Modify the `width` and `height` attributes to use your new type.
 X> 1. (Difficult) By defining type-level representatives for the Boolean values `true` and `false`, we can use a phantom type to encode whether an `AttributeKey` represents an _empty attribute_ such as `disabled` or `checked`.
-X> 
+X>
 X>     ```haskell
 X>     data True
 X>     data False
 X>     ```
-X> 
-X>     Modify your solution to the previous exercise to use a phantom type to prevent the user from using the `(:=)` operator with an empty attribute.
+X>
+X>     Modify your solution to the previous exercise to use a phantom type to prevent the user from using the `attribute` operator with an empty attribute.
 
 ## The Free Monad
 
@@ -362,10 +364,10 @@ In our final set of modifications to our API, we will use a construction called 
 
 ```haskell
 p [ _class := "main" ]
-  [ elem $ img 
+  [ elem $ img
       [ src    := "cat.jpg"
       , width  := 100
-      , height := 200 
+      , height := 200
       ]
   , text "A cat"
   ]
@@ -375,10 +377,10 @@ we will be able to write this:
 
 ```haskell
 p [ _class := "main" ] $ do
-  elem $ img 
+  elem $ img
     [ src    := "cat.jpg"
     , width  := 100
-    , height := 200 
+    , height := 200
     ]
   text "A cat"
 ```
@@ -389,6 +391,7 @@ The `Free` monad is defined in the `purescript-free` library, in the `Control.Mo
 
 ```text
 > import Control.Monad.Free
+
 > :kind Free
 (* -> *) -> * -> *
 ```
@@ -403,11 +406,11 @@ data ContentF a
   | ElementContent Element a
 
 instance functorContentF :: Functor ContentF where
-  map f (TextContent s a) = TextContent s (f a)
-  map f (ElementContent e a) = ElementContent e (f a)
+  map f (TextContent s x) = TextContent s (f x)
+  map f (ElementContent e x) = ElementContent e (f x)
 ```
 
-Here, the `ContentF` type constructor looks just like our old `Content` data type - however, it now takes a type argument `a`, and each data constructor has been modified to take a value of type `a` as an additional argument. The `Functor` instance simply applies the function `f` to the component of type `a` in each data constructor.
+Here, the `ContentF` type constructor looks just like our old `Content` data type - however, it now takes a type argument `a`, and each data constructor has been modified to take a value of type `a` as an additional argument. The `Functor` instance simply applies the function `f` to the value of type `a` in each data constructor.
 
 With that, we can define our new `Content` monad as a type synonym for the `Free` monad, which we construct by using our `ContentF` type constructor as the first type argument:
 
@@ -429,13 +432,13 @@ newtype Element = Element
   }
 ```
 
-In addition, we have to modify our `elem` and `text` functions, which become our new monadic actions for the `Content` monad. To do this, we can use the `liftF` function, provided by the `Control.Monad.Free` module. Here is its (simplified) type:
+In addition, we have to modify our `elem` and `text` functions, which become our new monadic actions for the `Content` monad. To do this, we can use the `liftF` function, provided by the `Control.Monad.Free` module. Here is its type:
 
 ```haskell
-liftF :: forall f a. (Functor f) => f a -> Free f a
+liftF :: forall f a. f a -> Free f a
 ```
 
-`liftF` allows us to construct an action in our free monad from a value of type `f a` for some type `a`. In our case, we can simply use the data constructors of our `ContentF` type constructor directly: 
+`liftF` allows us to construct an action in our free monad from a value of type `f a` for some type `a`. In our case, we can simply use the data constructors of our `ContentF` type constructor directly:
 
 ```haskell
 text :: String -> Content Unit
@@ -452,18 +455,22 @@ Some other routine modifications have to be made, but the interesting changes ar
 The `Control.Monad.Free` module provides a number of functions for interpreting a computation in a free monad:
 
 ```haskell
-runFree :: forall f a. (Functor f) => 
-  (f (Free f a) -> Free f a) -> 
-  Free f a -> 
-  a
-  
-runFreeM :: forall f m a. (Functor f, MonadRec m) => 
-  (f (Free f a) -> m (Free f a)) -> 
-  Free f a -> 
-  m a
+runFree
+  :: forall f a
+   . Functor f
+  => (f (Free f a) -> Free f a)
+  -> Free f a
+  -> a
+
+runFreeM
+  :: forall f m a
+   . (Functor f, MonadRec m)
+  => (f (Free f a) -> m (Free f a))
+  -> Free f a
+  -> m a
 ```
 
-The `runFree` function is used to compute a _pure_ result. The `runFreeM` function allows us to use a monad to interpret the actions of our free monad. 
+The `runFree` function is used to compute a _pure_ result. The `runFreeM` function allows us to use a monad to interpret the actions of our free monad.
 
 _Note_: Technically, we are restricted to using monads `m` which satisfy the stronger `MonadRec` constraint. In practice, this means that we don't need to worry about stack overflow, since `m` supports safe _monadic tail recursion_.
 
@@ -489,9 +496,9 @@ The definition of `renderElement` is straightforward, using the `tell` action fr
 ```haskell
     tell "<"
     tell e.name
-    for_ e.attribs $ \a -> do
+    for_ e.attribs $ \x -> do
       tell " "
-      renderAttribute a
+      renderAttribute x
     renderContent e.content
 ```
 
@@ -500,10 +507,10 @@ Next, we define the `renderAttribute` function, which is equally simple:
 ```haskell
     where
     renderAttribute :: Attribute -> Writer String Unit
-    renderAttribute (Attribute a) = do
-      tell a.key
+    renderAttribute (Attribute x) = do
+      tell x.key
       tell "=\""
-      tell a.value
+      tell x.value
       tell "\""
 ```
 
@@ -531,10 +538,10 @@ We can implement this function by simply pattern matching on the two data constr
 ```haskell
     renderContentItem (TextContent s rest) = do
       tell s
-      return rest
+      pure rest
     renderContentItem (ElementContent e rest) = do
       renderElement e
-      return rest
+      pure rest
 ```
 
 In each case, the expression `rest` has the type `Content Unit`, and represents the remainder of the interpreted computation. We can complete each case by returning the `rest` action.
@@ -549,14 +556,14 @@ That's it! We can test our new monadic API in PSCi, as follows:
 > log $ render $ p [] $ do
     elem $ img [ src := "cat.jpg" ]
     text "A cat"
-  
+
 <p><img src="cat.jpg" />A cat</p>
 unit
 ```
 
 X> ## Exercises
-X> 
-X> 1. (Medium) Add a new data constructor to the `ContentF` type to support a new action `comment`, which renders a comment in the generated HTML. Implement the new action using `liftF`. Update the interpretation `renderContentItem` to interpret your new constructor appropriately. 
+X>
+X> 1. (Medium) Add a new data constructor to the `ContentF` type to support a new action `comment`, which renders a comment in the generated HTML. Implement the new action using `liftF`. Update the interpretation `renderContentItem` to interpret your new constructor appropriately.
 
 ## Extending the Language
 
@@ -626,8 +633,8 @@ We also need to update the `Functor` instance for `ContentF`, taking into accoun
 
 ```haskell
 instance functorContentF :: Functor ContentF where
-  map f (TextContent s a) = TextContent s (f a)
-  map f (ElementContent e a) = ElementContent e (f a)
+  map f (TextContent s x) = TextContent s (f x)
+  map f (ElementContent e x) = ElementContent e (f x)
   map f (NewName k) = NewName (f <<< k)
 ```
 
@@ -660,9 +667,9 @@ We also need to add a new case to `renderContentItem`, to interpret the new `New
 ```haskell
     renderContentItem (NewName k) = do
       n <- get
-      let name = Name $ "name" ++ show n
+      let fresh = Name $ "name" <> show n
       put $ n + 1
-      return (k name)
+      pure (k fresh)
 ```
 
 Here, we are given a continuation `k` of type `Name -> Content a`, and we need to construct an interpretation of type `Content a`. Our interpretation is simple: we use `get` to read the state, use that state to generate a unique name, then use `put` to increment the state. Finally, we pass our new name to the continuation to complete the computation.
@@ -676,11 +683,11 @@ With that, we can try out our new functionality in PSCi, by generating a unique 
 
 > render $ p [ ] $ do
     top <- newName
-    elem $ a [ name := top ] $ 
+    elem $ a [ name := top ] $
       text "Top"
-    elem $ a [ href := AnchorHref top ] $ 
+    elem $ a [ href := AnchorHref top ] $
       text "Back to top"
-  
+
 <p><a name="name0">Top</a><a href="#name0">Back to top</a></p>
 unit
 ```
@@ -688,22 +695,22 @@ unit
 You can verify that multiple calls to `newName` do in fact result in unique names.
 
 X> ## Exercises
-X> 
+X>
 X> 1. (Medium) We can simplify the API further by hiding the `Element` type from its users. Make these changes in the following steps:
 X>     
-X>     - Combine functions like `p` and `img` (with return type `Element`) with the `elem` action to create new actions with return type `Content Unit`. 
+X>     - Combine functions like `p` and `img` (with return type `Element`) with the `elem` action to create new actions with return type `Content Unit`.
 X>     - Change the `render` function to accept an argument of type `Content Unit` instead of `Element`.
 X> 1. (Medium) Hide the implementation of the `Content` monad by using a `newtype` instead of a type synonym. You should not export the data
 X>     constructor for your `newtype`.
 X> 1. (Difficult) Modify the `ContentF` type to support a new action
-X> 
+X>
 X>     ```haskell
 X>     isMobile :: Content Boolean
 X>     ```
-X> 
+X>
 X>     which returns a boolean value indicating whether or not the document is being rendered for display on a mobile device.
-X> 
-X>     _Hint_: use the `ask` action and the `ReaderT` monad transformer to interpret this action.
+X>
+X>     _Hint_: use the `ask` action and the `ReaderT` monad transformer to interpret this action. Alternatively, you might prefer to use the `RWS` monad.
 
 ## Conclusion
 

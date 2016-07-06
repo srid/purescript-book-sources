@@ -7,11 +7,11 @@ Functional programming techniques have been making appearances in JavaScript for
 - Libraries such as [UnderscoreJS](http://underscorejs.org) allow the developer to leverage tried-and-trusted functions such as `map`, `filter` and `reduce` to create larger programs from smaller programs by composition:
 
     ```javascript
-    var sumOfPrimes = 
+    var sumOfPrimes =
         _.chain(_.range(1000))
          .filter(isPrime)
-         .reduce(function(x, y) { 
-             return x + y; 
+         .reduce(function(x, y) {
+             return x + y;
          })
          .value();
     ```
@@ -29,13 +29,13 @@ Functional programming techniques have been making appearances in JavaScript for
       }
     });
     ```
-    
+
 - Libraries such as [React](http://facebook.github.io/react/) and [virtual-dom](https://github.com/Matt-Esch/virtual-dom) model views as pure functions of application state.
 
 Functions enable a simple form of abstraction which can yield great productivity gains. However, functional programming in JavaScript has its own disadvantages: JavaScript is verbose, untyped, and lacks powerful forms of abstraction. Unrestricted JavaScript code also makes equational reasoning very difficult.
 
 PureScript is a programming language which aims to address these issues. It features lightweight syntax, which allows us to write very expressive code which is still clear and readable. It uses a rich type system to support powerful abstractions. It also generates fast, understandable code, which is important when interoperating with JavaScript, or other languages which compile to JavaScript. All in all, I hope to convince you that PureScript strikes a very practical balance between the theoretical power of purely functional programming, and the fast-and-loose programming style of JavaScript.
-    
+
 ## Types and Type Inference
 
 The debate over statically typed languages versus dynamically typed languages is well-documented. PureScript is a _statically typed_ language, meaning that a correct program can be given a _type_ by the compiler which indicates its behavior. Conversely, programs which cannot be given a type are _incorrect programs_, and will be rejected by the compiler. In PureScript, unlike in dynamically typed languages, types exist only at _compile-time_, and have no representation at runtime.
@@ -43,10 +43,10 @@ The debate over statically typed languages versus dynamically typed languages is
 It is important to note that in many ways, the types in PureScript are unlike the types that you might have seen in other languages like Java or C#. While they serve the same purpose at a high level, the types in PureScript are inspired by languages like ML and Haskell. PureScript's types are expressive, allowing the developer to assert strong claims about their programs. Most importantly, PureScript's type system supports _type inference_ - it requires far fewer explicit type annotations than other languages, making the type system a _tool_ rather than a hindrance. As a simple example, the following code defines a _number_, but there is no mention of the `Number` type anywhere in the code:
 
 ```haskell
-iAmANumber = 
+iAmANumber =
   let square x = x * x
   in square 42.0
-``` 
+```
 
 A more involved example shows that type-correctness can be confirmed without type annotations, even when there exist types which are _unknown to the compiler_:
 
@@ -85,7 +85,7 @@ The PureScript compiler itself can be downloaded as a binary distribution, or bu
 
 ## About You
 
-I will assume that you are familiar with the basics of JavaScript. Any prior familiarity with common tools from the JavaScript ecosystem, such as NPM, Grunt, and Bower, will be beneficial if you wish to customize the standard setup to your own needs, but such knowledge is not necessary.
+I will assume that you are familiar with the basics of JavaScript. Any prior familiarity with common tools from the JavaScript ecosystem, such as NPM and Gulp, will be beneficial if you wish to customize the standard setup to your own needs, but such knowledge is not necessary.
 
 No prior knowledge of functional programming is required, but it certainly won't hurt. New ideas will be accompanied by practical examples, so you should be able to form an intuition for the concepts from functional programming that we will use.
 
@@ -124,7 +124,7 @@ Commands which should be typed at the PSCi interactive mode prompt will be prece
 
 Each chapter will contain exercises, labelled with their difficulty level. It is strongly recommended that you attempt the exercises in each chapter to fully understand the material.
 
-This book aims to provide an introduction to the PureScript language for beginners, but it is not the sort of book that provides a list of template solutions to problems. For beginners, this book should be a fun challenge, and you will get the most benefit if you read the material, attempt the exercises, and most importantly of all, try to write some code of your own. 
+This book aims to provide an introduction to the PureScript language for beginners, but it is not the sort of book that provides a list of template solutions to problems. For beginners, this book should be a fun challenge, and you will get the most benefit if you read the material, attempt the exercises, and most importantly of all, try to write some code of your own.
 
 ## Getting Help
 
@@ -134,7 +134,7 @@ If you get stuck at any point, there are a number of resources available online 
 - The [PureScript website](http://purescript.org) contains links to several learning resources, including code samples, videos and other resources for beginners.
 - The [PureScript wiki](http://wiki.purescript.org) collects articles and examples on a wide variety of topics, written by PureScript developers and users.
 - [Try PureScript!](http://try.purescript.org) is a website which allows users to compile PureScript code in the web browser, and contains several simple examples of code.
-- [Pursuit](http://pursuit.purescript.org) is a searchable database of PureScript types and functions. 
+- [Pursuit](http://pursuit.purescript.org) is a searchable database of PureScript types and functions.
 
 If you prefer to learn by reading examples, the `purescript`, `purescript-node` and `purescript-contrib` GitHub organizations contain plenty of examples of PureScript code.
 
@@ -142,7 +142,7 @@ If you prefer to learn by reading examples, the `purescript`, `purescript-node` 
 
 I am the original developer of the PureScript compiler. I'm based in Los Angeles, California, and started programming at an early age in BASIC on an 8-bit personal computer, the Amstrad CPC. Since then I have worked professionally in a variety of programming languages (including Java, Scala, C#, F#, Haskell and PureScript).
 
-Not long into my professional career, I began to appreciate functional programming and its connections with mathematics, and fell in love with the Haskell programming language.
+Not long into my professional career, I began to appreciate functional programming and its connections with mathematics, and enjoyed learning functional concepts using the Haskell programming language.
 
 I started working on the PureScript compiler in response to my experience with JavaScript. I found myself using functional programming techniques that I had picked up in languages like Haskell, but wanted a more principled environment in which to apply them. Solutions at the time included various attempts to compile Haskell to JavaScript while preserving its semantics (Fay, Haste, GHCJS), but I was interested to see how successful I could be by approaching the problem from the other side - attempting to keep the semantics of JavaScript, while enjoying the syntax and type system of a language like Haskell.
 
@@ -155,4 +155,3 @@ I would like to thank the many contributors who helped PureScript to reach its c
 The PureScript logo which appears on the cover of this book was created by Gareth Hughes, and is gratefully reused here under the terms of the [Creative Commons Attribution 4.0 license](https://creativecommons.org/licenses/by/4.0/).
 
 Finally, I would like to thank everyone who has given me feedback and corrections on the contents of this book.
-
