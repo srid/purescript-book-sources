@@ -586,7 +586,7 @@ combineHashes :: HashCode -> HashCode -> HashCode
 combineHashes (HashCode h1) (HashCode h2) = hashCode (73 * h1 + 51 * h2)
 ```
 
-The `combineHashes` fybctuib will mix two hash codes and redistribute the result over the interval 0-65535.
+The `combineHashes` function will mix two hash codes and redistribute the result over the interval 0-65535.
 
 Let's write a function which uses the `Hashable` constraint to restrict the types of its inputs. One common task which requires a hashing function is to determine if two values hash to the same hash code. The `hashEqual` relation provides such a capability:
 
