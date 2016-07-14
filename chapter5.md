@@ -342,6 +342,9 @@ The definition has the following redundant cases:
   false
 ```
 
+_Note_: PSCi does not show warnings, so to reproduce this example, you will need to
+save this function as a file and compile it using `pulp build`.
+
 ## Algebraic Data Types
 
 This section will introduce a feature of the PureScript type system called _Algebraic Data Types_ (or _ADTs_), which are fundamentally related to pattern matching.
