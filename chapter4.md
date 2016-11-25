@@ -548,7 +548,7 @@ X> 3. (Medium) Rewrite the following function in tail recursive form using an ac
 X>
 X>     ```haskell
 X>     import Prelude
-X>     import Data.Array.Unsafe (head, tail)
+X>     import Data.Array.Partial (head, tail)
 X>     
 X>     count :: forall a. (a -> Boolean) -> Array a -> Int
 X>     count _ [] = 0

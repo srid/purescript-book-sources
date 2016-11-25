@@ -27,7 +27,6 @@ The module imports the `Data.Foldable` module, which provides functions for fold
 module Data.Picture where
 
 import Prelude
-
 import Data.Foldable (foldl)
 ```
 
@@ -137,8 +136,10 @@ takeFive _ = 0
 The first pattern only matches arrays with five elements, whose first and second elements are 0 and 1 respectively. In that case, the function returns the product of the third and fourth elements. In every other case, the function returns zero. For example, in PSCi:
 
 ```text
-> let takeFive [0, 1, a, b, _] = a * b
-      takeFive _ = 0
+> :paste
+… let takeFive [0, 1, a, b, _] = a * b
+…     takeFive _ = 0
+… ^D
 
 > takeFive [0, 1, 2, 3, 4]
 6
@@ -150,7 +151,7 @@ The first pattern only matches arrays with five elements, whose first and second
 0
 ```
 
-Array literal patterns allow us to match arrays of a fixed length, but PureScript does _not_ provide any means of matching arrays of an unspecified length. In older versions of the compiler, a feature called _cons patterns_ provided a way to break arrays into their head element and tail, but due to the poor performance of immutable arrays in Javascript, this feature was removed. If you need a data structure which supports this sort of matching, the recommended approach is to use `Data.List`. Other data structures exist which provide improved asymptotic performance for different operations.
+Array literal patterns allow us to match arrays of a fixed length, but PureScript does _not_ provide any means of matching arrays of an unspecified length, since destructuring immutable arrays in these sorts of ways can lead to poor performance. If you need a data structure which supports this sort of matching, the recommended approach is to use `Data.List`. Other data structures exist which provide improved asymptotic performance for different operations.
 
 ## Record Patterns and Row Polymorphism
 
@@ -210,7 +211,7 @@ We will see row polymorphism again later, when we discuss _extensible effects_.
 
 Array patterns and record patterns both combine smaller patterns to build larger patterns. For the most part, the examples above have only used simple patterns inside array patterns and record patterns, but it is important to note that patterns can be arbitrarily _nested_, which allows functions to be defined using conditions on potentially complex data types.
 
-For example, this code combines two record patterns to match an array of records:
+For example, this code combines two record patterns:
 
 ```haskell
 type Address = { street :: String, city :: String }
@@ -251,13 +252,14 @@ Patterns do not only appear in top-level function declarations. It is possible t
 Here is an example. This function computes "longest zero suffix" of an array (the longest suffix which sums to zero):
 
 ```haskell
-import Data.Array.Unsafe (tail)
+import Data.Array.Partial (tail)
+import Partial.Unsafe (unsafePartial)
 
 lzs :: Array Int -> Array Int
 lzs [] = []
 lzs xs = case sum xs of
            0 -> xs
-           _ -> lzs (tail xs)
+           _ -> lzs (unsafePartial tail xs)
 ```
 
 For example:
@@ -412,11 +414,11 @@ For example, the `Line` constructor defined above required two `Point`s, so to c
 exampleLine :: Shape
 exampleLine = Line p1 p2
   where
-  p1 :: Point
-  p1 = Point { x: 0.0, y: 0.0 }
+    p1 :: Point
+    p1 = Point { x: 0.0, y: 0.0 }
 
-  p2 :: Point
-  p2 = Point { x: 100.0, y: 50.0 }
+    p2 :: Point
+    p2 = Point { x: 100.0, y: 50.0 }
 ```
 
 To construct the points `p1` and `p2`, we apply the `Point` constructor to its single argument, which is a record.
@@ -512,8 +514,12 @@ $ pulp psci
 
 > import Data.Picture
 
-> showPicture [Line (Point { x: 0.0, y: 0.0 })
-                    (Point { x: 1.0, y: 1.0 })]
+> :paste
+… showPicture
+…   [ Line (Point { x: 0.0, y: 0.0 })
+…          (Point { x: 1.0, y: 1.0 })
+…   ]
+… ^D
 
 ["Line [start: (0.0, 0.0), end: (1.0, 1.0)]"]
 ```
@@ -539,8 +545,8 @@ data Bounds = Bounds
 bounds :: Picture -> Bounds
 bounds = foldl combine emptyBounds
   where
-  combine :: Bounds -> Shape -> Bounds
-  combine b shape = shapeBounds shape \/ b
+    combine :: Bounds -> Shape -> Bounds
+    combine b shape = shapeBounds shape \/ b
 ```
 
 In the base case, we need to find the smallest bounding rectangle of an empty `Picture`, and the empty bounding rectangle defined by `emptyBounds` suffices.
