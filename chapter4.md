@@ -95,11 +95,10 @@ $ psci
 
 > import Prelude
 > map (\n -> n + 1) [1, 2, 3, 4, 5]
-
 [2, 3, 4, 5, 6]
 ```
 
-Notice how `map` is used: we provide a function which should be "mapped over" the array in the first argument, and the array itself in its second.
+Notice how `map` is used - we provide a function which should be "mapped over" the array in the first argument, and the array itself in its second.
 
 ## Infix Operators
 
@@ -107,7 +106,6 @@ The `map` function can also be written between the mapping function and the arra
 
 ```text
 > (\n -> n + 1) `map` [1, 2, 3, 4, 5]
-
 [2, 3, 4, 5, 6]
 ```
 
@@ -117,7 +115,6 @@ There is an operator which is equivalent to the `map` function when used with ar
 
 ```text
 > (\n -> n + 1) <$> [1, 2, 3, 4, 5]
-
 [2, 3, 4, 5, 6]
 ```
 
@@ -125,7 +122,7 @@ Let's look at the type of `map`:
 
 ```text
 > :type map
-forall a b f. Prelude.Functor f => (a -> b) -> f a -> f b
+forall a b f. (Functor f) => (a -> b) -> f a -> f b
 ```
 
 The type of `map` is actually more general than we need in this chapter. For our purposes, we can treat `map` as if it had the following less general type:
@@ -146,7 +143,6 @@ Even though the infix operator `<$>` looks like special syntax, it is in fact ju
 
 ```text
 > (<$>) show [1, 2, 3, 4, 5]
-
 ["1","2","3","4","5"]
 ```
 
@@ -159,22 +155,21 @@ infix 8 range as ..
 We can use this operator as follows:
 
 ```text
-> 1 .. 5
+> import Data.Array
 
+> 1 .. 5
 [1, 2, 3, 4, 5]
 
 > show <$> (1 .. 5)
-
 ["1","2","3","4","5"]
 ```
 
-_Note_: Infix operators can be a great tool for defining domain-specific languages with a natural syntax. However, used carelessly, they can render code unreadable to beginners, so it is wise to exercise caution when defining any new operators.
+_Note_: Infix operators can be a great tool for defining domain-specific languages with a natural syntax. However, used excessively, they can render code unreadable to beginners, so it is wise to exercise caution when defining any new operators.
 
 In the example above, we parenthesized the expression `1 .. 5`, but this was actually not necessary, because the `Data.Array` module assigns a higher precedence level to the `..` operator than that assigned to the `<$>` operator. In the example above, the precedence of the `..` operator was defined as `8`, the number after the `infix` keyword. This is higher than the precedence level of `<$>`, meaning that we do not need to add parentheses:
 
 ```text
 > show <$> 1 .. 5
-
 ["1","2","3","4","5"]
 ```
 
@@ -205,12 +200,11 @@ Another standard function on arrays is the `concat` function, defined in `Data.A
 
 ```text
 > import Data.Array
-> :type concat
 
+> :type concat
 forall a. Array (Array a) -> Array a
 
 > concat [[1, 2, 3], [4, 5], [6]]
-
 [1, 2, 3, 4, 5, 6]
 ```
 
@@ -225,7 +219,6 @@ Let's see it in action:
 forall a b. (a -> Array b) -> Array a -> Array b
 
 > concatMap (\n -> [n, n * n]) (1 .. 5)
-
 [1,1,2,4,3,9,4,16,5,25]
 ```
 
@@ -259,7 +252,12 @@ We can test our function
 This is not quite what we want. Instead of just returning the second element of each pair, we need to map a function over the inner copy of `1 .. n` which will allow us to keep the entire pair:
 
 ```text
-> let pairs' n = concatMap (\i -> map (\j -> [i, j]) (1 .. n)) (1 .. n)
+> :paste
+… let pairs' n =
+…       concatMap (\i ->
+…         map (\j -> [i, j]) (1 .. n)
+…       ) (1 .. n)
+… ^D
 
 > pairs' 3
 [[1,1],[1,2],[1,3],[2,1],[2,2],[2,3],[3,1],[3,2],[3,3]]
@@ -268,8 +266,12 @@ This is not quite what we want. Instead of just returning the second element of 
 This is looking better. However, we are generating too many pairs: we keep both [1, 2] and [2, 1] for example. We can exclude the second case by making sure that `j` only ranges from `i` to `n`:
 
 ```text
-> let pairs'' n = concatMap (\i -> map (\j -> [i, j]) (i .. n)) (1 .. n)
-
+> :paste
+… let pairs'' n =
+…       concatMap (\i ->
+…         map (\j -> [i, j]) (i .. n)
+…       ) (1 .. n)
+… ^D
 > pairs'' 3
 [[1,1],[1,2],[1,3],[2,2],[2,3],[3,3]]
 ```
@@ -291,7 +293,7 @@ Excellent! We've managed to find the correct set of factor pairs without duplica
 
 ## Do Notation
 
-However, we can improve the readability of our code considerably. `map` and `concatMap` are so fundamental, that they form the basis (or rather, their generalizations `map` and `bind` form the basis) of a special syntax called _do notation_.
+However, we can improve the readability of our code considerably. `map` and `concatMap` are so fundamental, that they (or rather, their generalizations `map` and `bind`) form the basis of a special syntax called _do notation_.
 
 _Note_: Just like `map` and `concatMap` allowed us to write _array comprehensions_, the more general operators `map` and `bind` allow us to write so-called _monad comprehensions_. We'll see plenty more examples of _monads_ later in the book, but in this chapter, we will only consider arrays.
 
@@ -334,7 +336,7 @@ and the result would be the same.
 
 ## Guards
 
-One further improvement we can make to the `factors` function is to move the filter inside the array comprehension. This is possible using the `guard` function from the `Control.MonadZero` module (from the `purescript-control` package):
+One further change we can make to the `factors` function is to move the filter inside the array comprehension. This is possible using the `guard` function from the `Control.MonadZero` module (from the `purescript-control` package):
 
 ```haskell
 import Control.MonadZero (guard)
@@ -376,7 +378,7 @@ For our purposes, the following calculations tell us everything we need to know 
 
 That is, if `guard` is passed an expression which evaluates to `true`, then it returns an array with a single element. If the expression evaluates to `false`, then its result is empty.
 
-This means that if the guard fails, then the current branch of the array comprehension will terminate early with no results. This means that a call to `guard` is equivalent to using `filter` on the intermediate array. Try the two definitions of `factors` to verify that they give the same results.
+This means that if the guard fails, then the current branch of the array comprehension will terminate early with no results. This means that a call to `guard` is equivalent to using `filter` on the intermediate array. Depending on the application, you might prefer to use `guard` instead of a `filter`. Try the two definitions of `factors` to verify that they give the same results.
 
 X> ## Exercises
 X>
@@ -507,9 +509,9 @@ This implementation is not tail recursive, so the generated JavaScript will caus
 reverse :: forall a. Array a -> Array a
 reverse = reverse' []
   where
-  reverse' acc [] = acc
-  reverse' acc xs = reverse' (unsafePartial head xs : acc)
-                             (unsafePartial tail xs)
+    reverse' acc [] = acc
+    reverse' acc xs = reverse' (unsafePartial head xs : acc)
+                               (unsafePartial tail xs)
 ```
 
 In this case, we delegate to the helper function `reverse'`, which performs the heavy lifting of reversing the array. Notice though that the function `reverse'` is tail recursive - its only recursive call is in the last case, and is in tail position. This means that the generated code will be a _while loop_, and will not blow the stack for large inputs.
@@ -526,11 +528,13 @@ For example, the `reverse` example can be written as a fold in at least two ways
 
 ```text
 > import Data.Foldable
-> let reverse :: forall a. Array a -> Array a
-      reverse = foldr (\x xs -> xs <> [x]) []
+
+> :paste
+… let reverse :: forall a. Array a -> Array a
+…     reverse = foldr (\x xs -> xs <> [x]) []
+… ^D
 
 > reverse [1, 2, 3]
-
 [3,2,1]
 ```
 
