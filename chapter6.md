@@ -20,21 +20,7 @@ The project has the following Bower dependencies:
 - `purescript-strings`, which defines functions which operate on strings.
 - `purescript-functions`, which defines some helper functions for defining PureScript functions.
 
-The module `Data.Hashable` imports several modules provided by these Bower packages:
-
-```haskell
-module Data.Hashable where
-
-import Prelude
-
-import Data.Char (toCharCode)
-import Data.Either (Either(..))
-import Data.Foldable (foldl)
-import Data.Function (on)
-import Data.Maybe (Maybe(..))
-import Data.String (toCharArray)
-import Data.Tuple (Tuple(..))
-```
+The module `Data.Hashable` imports several modules provided by these Bower packages.
 
 ## Show Me!
 
@@ -81,12 +67,12 @@ These examples demonstrate how to `show` values of various primitive types, but 
 ```text
 > import Data.Tuple
 
-> show $ Tuple 1 true
+> show (Tuple 1 true)
 "(Tuple 1 true)"
 
 > import Data.Maybe
 
-> show $ Just "testing"
+> show (Just "testing")
 "(Just \"testing\")"
 ```
 
@@ -94,16 +80,16 @@ If we try to show a value of type `Data.Either`, we get an interesting error mes
 
 ```text
 > import Data.Either
-> show $ Left 10
+> show (Left 10)
 
-No type class instance was found for
+The inferred type
 
-  Data.Show.Show t0
+    forall a. Show a => String
 
-The instance head contains unknown type variables. Consider adding a type annotation.
+has type variables which are not mentioned in the body of the type. Consider adding a type annotation.
 ```
 
-The problem here is not that there is no `Show` instance for the type we intended to `show`, but rather that PSCi was unable to infer the type. This is indicated by the _unknown type_ `t0` in the error message.
+The problem here is not that there is no `Show` instance for the type we intended to `show`, but rather that PSCi was unable to infer the type. This is indicated by the _unknown type_ `a` in the inferred type.
 
 We can annotate the expression with a type, using the `::` operator, so that PSCi can choose the correct type class instance:
 
@@ -115,6 +101,7 @@ We can annotate the expression with a type, using the `::` operator, so that PSC
 Some types do not have a `Show` instance defined at all. One example of this is the function type `->`. If we try to `show` a function from `Int` to `Int`, we get an appropriate error message from the type checker:
 
 ```text
+> import Prelude
 > show $ \n -> n + 1
 
 No type class instance was found for
@@ -158,14 +145,14 @@ The `Ord` type class defines the `compare` function, which can be used to compar
 ```haskell
 data Ordering = LT | EQ | GT
 
-class (Eq a) <= Ord a where
+class Eq a <= Ord a where
   compare :: a -> a -> Ordering
 ```
 
 The `compare` function compares two values, and returns an `Ordering`, which has three alternatives:
 
 - `LT` - if the first argument is less than the second.
-- `EQ` - if the first argument is equal to (or incomparable with) the second.
+- `EQ` - if the first argument is equal to the second.
 - `GT` - if the first argument is greater than the second.
 
 Again, we can try out the `compare` function in PSCi:
@@ -314,15 +301,6 @@ X>       }
 X>     ```
 X>       
 X>     Define `Show` and `Eq` instances for `Complex`.
-X> 1. (Medium) The following type defines a type of non-empty arrays of elements of type `a`:
-X>
-X>     ```haskell
-X>     data NonEmpty a = NonEmpty a (Array a)
-X>     ```
-X>      
-X>     Write a `Semigroup` instance for non-empty arrays by reusing the `Semigroup` instance for `Array`.
-X> 1. (Medium) Write a `Functor` instance for `NonEmpty`.
-X> 1. (Difficult) Write a `Foldable` instance for `NonEmpty`. _Hint_: reuse the `Foldable` instance for arrays.
 
 ## Type Annotations
 
@@ -409,7 +387,15 @@ When the program is compiled, the correct type class instance for `Show` is chos
 
 X> ## Exercises
 X>
-X> 1. (Easy) Write an `Eq` instance for the type `NonEmpty a` which reuses the instances for `Eq a` and `Eq (Array a)`.
+X> 1. (Easy) The following declaration defines a type of non-empty arrays of elements of type `a`:
+X>
+X>     ```haskell
+X>     data NonEmpty a = NonEmpty a (Array a)
+X>     ```
+X>      
+X>     Write an `Eq` instance for the type `NonEmpty a` which reuses the instances for `Eq a` and `Eq (Array a)`.
+X> 1. (Medium) Write a `Semigroup` instance for `NonEmpty a` by reusing the `Semigroup` instance for `Array`.
+X> 1. (Medium) Write a `Functor` instance for `NonEmpty`.
 X> 1. (Medium) Given any type `a` with an instance of `Ord`, we can add a new "infinite" value which is greater than any other value:
 X>
 X>     ```haskell
@@ -417,6 +403,7 @@ X>     data Extended a = Finite a | Infinite
 X>     ```
 X>         
 X>     Write an `Ord` instance for `Extended a` which reuses the `Ord` instance for `a`.
+X> 1. (Difficult) Write a `Foldable` instance for `NonEmpty`. _Hint_: reuse the `Foldable` instance for arrays.
 X> 1. (Difficult) Given an type constructor `f` which defines an ordered container (and so has a `Foldable` instance), we can create a new container type which includes an extra element at the front:
 X>
 X>     ```haskell
@@ -443,8 +430,8 @@ import Data.Array as Array
 import Data.Maybe (Maybe)
 import Data.String as String
 
-class Stream list element where
-  uncons :: list -> Maybe { head :: element, tail :: list }
+class Stream stream element where
+  uncons :: stream -> Maybe { head :: element, tail :: stream }
 
 instance streamArray :: Stream (Array a) a where
   uncons = Array.uncons
@@ -473,6 +460,61 @@ foldStream f list =
 ```
 
 Try using `foldStream` in PSCi for different types of `Stream` and different types of `Monoid`.
+
+## Functional Dependencies
+
+Multi-parameter type classes can be very useful, but can easily lead to confusing types and even issues with type inference. As a simple example, consider writing a generic `tail` function on streams using the `Stream` class given above:
+
+```haskell
+genericTail xs = map _.tail (uncons xs)
+```
+
+This gives a somewhat confusing error message:
+
+```text
+The inferred type
+
+  forall stream a. Stream stream a => stream -> Maybe stream
+
+has type variables which are not mentioned in the body of the type. Consider adding a type annotation.
+```
+
+The problem is that the `genericTail` function does not use the `element` type mentioned in the definition of the `Stream` type class, so that type is left unsolved.
+
+Worse still, we cannot even use `genericTail` by applying it to a specific type of stream:
+
+```text
+> map _.tail (uncons "testing")
+
+The inferred type
+
+  forall a. Stream String a => Maybe String
+
+has type variables which are not mentioned in the body of the type. Consider adding a type annotation.
+```
+
+Here, we might expect the compiler to choose the `streamString` instance. After all, a `String` is a stream of `Char`s, and cannot be a stream of any other type of elements.
+
+The compiler is unable to make that deduction automatically, and cannot commit to the `streamString` instance. However, we can help the compiler by adding a hint to the type class definition:
+
+```haskell
+class Stream stream element | stream -> element where
+  uncons :: stream -> Maybe { head :: element, tail :: stream }
+```
+
+Here, `list -> element` is called a _functional dependency_. A functional dependency asserts a functional relationship between the type arguments of a multi-parameter type class. This functional dependency tells the compiler that there is a function from stream types to (unique) element types, so if the compiler knows the stream type, then it can commit to the element type.
+
+This hint is enough for the compiler to infer the correct type for our generic tail function above:
+
+```text
+> :type genericTail
+forall stream element. Stream stream element => stream -> Maybe stream
+
+> genericTail "testing"
+(Just "esting")
+```
+
+Functional dependencies can be quite useful when using multi-parameter type classes to design certain APIs.
 
 ## Nullary Type Classes
 
@@ -532,18 +574,22 @@ X>     class Monoid m <= Action m a where
 X>       act :: m -> a -> a
 X>     ```
 X>           
-X>     An _action_ is a function which describes how a monoid can be used to modify a value of another type. We expect the action to respect the concatenation operator of the monoid. For example, the monoid of natural numbers with multiplication _acts_ on strings by repeating a string some number of times:
+X>     An _action_ is a function which describes how a monoid can be used to modify a value of another type. We expect the action to respect the concatenation operator of the monoid. For example, the monoid of natural numbers under addition (defined in the `Data.Monoid.Additive` module) _acts_ on strings by repeating a string some number of times:
 X>  
 X>     ```haskell
-X>     instance repeatAction :: Action Int String where
-X>       act 0 _ = ""
-X>       act n s = s <> act (n - 1) s
+X>     import Data.Monoid.Additive (Additive(..))
+X>
+X>     instance repeatAction :: Action (Additive Int) String where
+X>       act (Additive n) s = repeat n s where
+X>         repeat 0 _ = ""
+X>         repeat m s = s <> repeat (m - 1) s
 X>     ```
 X>
-X>     Note that `act 2 s` is equal to the combination `act 1 s <> act 1 s`, and `1 <> 1 = 2` in the monoid of additive integers.
+X>     Note that `act (Additive 2) s` is equal to the combination `act (Additive 1) s <> act (Additive 1) s`, and `Additive 1 <> Additive 1 = Additive 2`.
 X>   
 X>     Write down a reasonable set of laws which describe how the `Action` class should interact with the `Monoid` class. _Hint_: how do we expect `mempty` to act on elements? What about `append`?
 X> 1. (Medium) Write an instance `Action m a => Action m (Array a)`, where the action on arrays is defined by acting on the elements independently.
+X> 1. (Difficult) Should the arguments of the multi-parameter type class `Action` be related by some functional dependency? Why or why not?
 X> 1. (Difficult) Given the following newtype, write an instance for `Action m (Self m)`, where the monoid `m` acts on itself using `append`:
 X>
 X>     ```haskell
