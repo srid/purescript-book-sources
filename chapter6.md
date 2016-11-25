@@ -281,7 +281,7 @@ Type class instances for `Functor` are expected to adhere to a set of _laws_, ca
 - `map id xs = xs`
 - `map g (map f xs) = map (g <<< f) xs`
 
-The first law is the _identity law_. It states that lifting the identity function over a structure just returns the original structure. This makes sense since the identity function does not modify its input.
+The first law is the _identity law_. It states that lifting the identity function (the function which returns its argument unchanged) over a structure just returns the original structure. This makes sense since the identity function does not modify its input.
 
 The second law is the _composition law_. It states that mapping one function over a structure, and then mapping a second, is the same thing as mapping the composition of the two functions over the structure.
 
