@@ -83,6 +83,9 @@ The software requirements for this book are minimal: the first chapter will guid
 
 The PureScript compiler itself can be downloaded as a binary distribution, or built from source on any system running an up-to-date installation of the GHC Haskell compiler, and we will walk through this process in the next chapter.
 
+The code in this version of the book is compatible with versions `0.10.*` of
+the PureScript compiler.
+
 ## About You
 
 I will assume that you are familiar with the basics of JavaScript. Any prior familiarity with common tools from the JavaScript ecosystem, such as NPM and Gulp, will be beneficial if you wish to customize the standard setup to your own needs, but such knowledge is not necessary.

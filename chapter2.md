@@ -206,7 +206,7 @@ $ pulp run
 
 * Building project in ~/my-project
 * Build successful.
-5
+5.0
 ```
 
 ## Testing Code Using the Interactive Mode
@@ -234,6 +234,7 @@ The following commands are available:
     :kind        <type>       Show the kind of <type>
     :show        import       Show imported modules
     :show        loaded       Show loaded modules
+    :paste       paste        Enter multiple lines, terminated by ^D
 ```
 
 By pressing the Tab key, you should be able to see a list of all functions available in your own code, as well as any Bower dependencies and the Prelude modules.
