@@ -30,7 +30,7 @@ Here, we import several modules:
 
 Notice that the imports for these modules are listed explicitly in parentheses. This is generally a good practice, as it helps to avoid conflicting imports.
 
-The project for this chapter can be built using Pulp, with the following commands:
+Assuming you have cloned the book's source code repository, the project for this chapter can be built using Pulp, with the following commands:
 
 ```text
 $ cd chapter3
@@ -81,7 +81,7 @@ Array Int
 Array Boolean
 
 > :type [1, false]
-Cannot unify Int with Boolean.
+Could not match type Int with Boolean.
 ```
 
 The error in the last example is an error from the type checker, which unsuccessfully attempted to _unify_ (i.e. make equal) the types of the two elements.
@@ -127,12 +127,14 @@ add :: Int -> Int -> Int
 add x y = x + y
 ```
 
-Alternatively, functions can be defined inline, by using a backslash character followed by a space-delimited list of argument names. To enter a multi-line declaration in PSCi, we can use multi-line mode, by starting PSCi with the `-m` (or `--multi-line-mode`) option. In this mode, declarations are terminated using the _Control-D_ key sequence:
+Alternatively, functions can be defined inline, by using a backslash character followed by a space-delimited list of argument names. To enter a multi-line declaration in PSCi, we can enter "paste mode" by using the `:paste` command. In this mode, declarations are terminated using the _Control-D_ key sequence:
 
 ```text
-> let
-    add :: Int -> Int -> Int
-    add = \x y -> x + y
+> :paste
+… let
+…   add :: Int -> Int -> Int
+…   add = \x y -> x + y
+… ^D
 ```
 
 Having defined this function in PSCi, we can _apply_ it to its arguments by separating the two arguments from the function name by whitespace:
@@ -200,15 +202,19 @@ In the second case, the PureScript compiler will try to parse _two_ declarations
 Generally, any declarations defined in the same block should be indented at the same level. For example, in PSCi with multi-line mode turned on, declarations in a let statement must be indented equally. This is valid:
 
 ```text
-> let x = 1
-      y = 2
+> :paste
+… let x = 1
+…     y = 2
+… ^D
 ```
 
 but this is not:
 
 ```text
-> let x = 1
-       y = 2
+> :paste
+… let x = 1
+…      y = 2
+… ^D
 ```
 
 Certain PureScript keywords (such as `where`, `of` and `let`) introduce a new block of code, in which declarations must be further-indented:
@@ -216,8 +222,8 @@ Certain PureScript keywords (such as `where`, `of` and `let`) introduce a new bl
 ```haskell
 example x y z = foo + bar
   where
-  foo = x * y
-  bar = y * z
+    foo = x * y
+    bar = y * z
 ```
 
 Note how the declarations for `foo` and `bar` are indented past the declaration of `example`.
@@ -343,7 +349,7 @@ We can create an entry by using a record literal, which looks just like an anony
 > let address = { street: "123 Fake St.", city: "Faketown", state: "CA" }
 ```
 
-(If you are using multi-line mode, then don't forget to terminate the expression with Ctrl+D). Now, try applying our function to the example:
+Now, try applying our function to the example:
 
 ```text
 > showAddress address
@@ -427,7 +433,7 @@ That is, `insertEntry` is a function which returns a function! It takes a single
 This means that we can _partially apply_ `insertEntry` by specifying only its first argument, for example. In PSCi, we can see the result type:
 
 ```text
-> :type insertEntry example
+> :type insertEntry entry
 
 AddressBook -> AddressBook
 ```
@@ -435,7 +441,7 @@ AddressBook -> AddressBook
 As expected, the return type was a function. We can apply the resulting function to a second argument:
 
 ```text
-> :type (insertEntry example) emptyBook
+> :type (insertEntry entry) emptyBook
 AddressBook
 ```
 
@@ -547,14 +553,16 @@ In the code for `findEntry` above, we used a different form of function applicat
 
 This is equivalent to the usual application `head (filter filterEntry book)`
 
-`($)` is just a regular function, defined in the Prelude. It is defined as follows:
+`($)` is just an alias for a regular function called `apply`, which is defined in the Prelude. It is defined as follows:
 
 ```haskell
-($) :: forall a b. (a -> b) -> a -> b
-($) f x = f x
+apply :: forall a b. (a -> b) -> a -> b
+apply f x = f x
+
+infixr 0 apply as $
 ```
 
-So `($)` takes a function and a value and applies the function to the value.
+So `apply` takes a function and a value and applies the function to the value. The `infixr` keyword is used to define `($)` as an alias for `apply`.
 
 But why would we want to use `$` instead of regular function application? The reason is that `$` is a right-associative, low precedence operator. This means that `$` allows us to remove sets of parentheses for deeply-nested applications.
 
@@ -589,7 +597,7 @@ In this form, we can apply the eta conversion trick from earlier, to arrive at t
 ```haskell
 findEntry firstName lastName = head <<< filter filterEntry
   where
-  ...
+    ...
 ```
 
 An equally valid right-hand side would be:
@@ -674,7 +682,6 @@ X> 1. (Difficult) Write a function `removeDuplicates` which removes duplicate ad
 
 In this chapter, we covered several new functional programming concepts:
 
-- The importance of immutable data and pure functions.
 - How to use the interactive mode PSCi to experiment with functions and test ideas.
 - The role of types as both a correctness tool, and an implementation tool.
 - The use of curried functions to represent functions of multiple arguments.
