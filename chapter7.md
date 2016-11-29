@@ -127,9 +127,9 @@ Now we'll see how `map` and `apply` can be used together to lift functions of ar
 
 For functions of one argument, we can just use `map` directly.
 
-For functions of two arguments, we have a curried function `f` with type `a -> b -> c`, say. This is equivalent to the type `a -> (b -> c)`, so we can apply `map` to `f` to get a new function of type `f a -> f (b -> c)`. Partially applying this function to the first lifted argument (of type `f a`), we get a new wrapped function of type `f (b -> c)`. We can then use `apply` to apply the second lifted argument (of type `f b`) to get our final value of type `f c`.
+For functions of two arguments, we have a curried function `g` with type `a -> b -> c`, say. This is equivalent to the type `a -> (b -> c)`, so we can apply `map` to `g` to get a new function of type `f a -> f (b -> c)` for any type constructor `f` with a `Functor` instance. Partially applying this function to the first lifted argument (of type `f a`), we get a new wrapped function of type `f (b -> c)`. If we also have an `Apply` instance for `f`, then we can then use `apply` to apply the second lifted argument (of type `f b`) to get our final value of type `f c`.
 
-Putting this all together, we see that if we have values `x :: f a` and `y :: f b`, then the expression `(f <$> x) <*> y` has type `f c` (remember, this expression is equivalent to `apply (map f x) y`). The precedence rules defined in the Prelude allow us to remove the parentheses: `f <$> x <*> y`.
+Putting this all together, we see that if we have values `x :: f a` and `y :: f b`, then the expression `(g <$> x) <*> y` has type `f c` (remember, this expression is equivalent to `apply (map g x) y`). The precedence rules defined in the Prelude allow us to remove the parentheses: `g <$> x <*> y`.
 
 In general, we can use `<$>` on the first argument, and `<*>` for the remaining arguments, as illustrated here for `lift3`:
 
@@ -226,8 +226,10 @@ This is good, because now we can send an error response back from our web servic
 Instead of lifting over `Maybe`, we can lift over `Either String`, which allows us to return an error message. First, let's write an operator to convert optional inputs into computations which can signal an error using `Either String`:
 
 ```text
-> let withError Nothing  err = Left err
-      withError (Just a) _   = Right a
+> :paste
+… let withError Nothing  err = Left err
+…     withError (Just a) _   = Right a
+… ^D
 ```
 
 _Note_: In the `Either err` applicative functor, the `Left` constructor indicates an error, and the `Right` constructor indicates success.
@@ -235,10 +237,12 @@ _Note_: In the `Either err` applicative functor, the `Left` constructor indicate
 Now we can lift over `Either String`, providing an appropriate error message for each parameter:
 
 ```text
-> let fullNameEither first middle last =
-    fullName <$> (first  `withError` "First name was missing")
-             <*> (middle `withError` "Middle name was missing")
-             <*> (last   `withError` "Last name was missing")
+> :paste
+… let fullNameEither first middle last =
+…     fullName <$> (first  `withError` "First name was missing")
+…              <*> (middle `withError` "Middle name was missing")
+…              <*> (last   `withError` "Last name was missing")
+… ^D
 
 > :type fullNameEither
 Maybe String -> Maybe String -> Maybe String -> Either String String
@@ -579,6 +583,7 @@ But there are more examples of traversable functors than just arrays and lists. 
 
 ```text
 > import Data.Maybe
+> import Data.Traversable
 
 > traverse (nonEmpty "Example") Nothing
 (Valid Nothing)
@@ -615,7 +620,7 @@ However, in general, applicative functors are more general than this. The applic
 
 For example, the `V` validation functor returned an _array_ of errors, but it would work just as well if we picked the `Set` semigroup, in which case it would not matter what order we ran the various validators. We could even run them in parallel over the data structure!
 
-As a second example, the `purescript-parallel` package provides a type constructor `Parallel` which represents _asynchronous computations_. `Parallel` has an `Applicative` instance which computes its results _in parallel_:
+As a second example, the `purescript-parallel` package provides a type class `Parallel` which supports _parallel computations_. `Parallel` provides a function `parallel` which uses some `Applicative` functor to compute the result of its input computation _in parallel_:
 
 ```haskell
 f <$> parallel computation1
